@@ -1,0 +1,75 @@
+---
+import type { PageMetadata } from "@/lib/types/PageMetadata";
+
+interface Props {
+  meta?: PageMetadata;
+}
+
+const DEFAULT_KEYWORDS =
+  "programming, software engineering, development, frontend, backend, fullstack";
+
+const { meta = {} } = Astro.props;
+
+const title = meta.title
+  ? `${meta.title} | Parker's Digital Domain`
+  : "Parker's Digital Domain";
+const description =
+  meta.description ?? "A portfolio of Parker's projects and writings.";
+const canonicalUrl = meta.url ?? Astro.url.href;
+const ogImageUrl =
+  meta.ogImageUrl ?? new URL("/default-og-image.png", Astro.site).href;
+const ogImageWidth = meta.ogImageWidth ?? "1200";
+const ogImageHeight = meta.ogImageHeight ?? "630";
+const keywords = meta.keywords
+  ? `${DEFAULT_KEYWORDS}, ${meta.keywords}`
+  : DEFAULT_KEYWORDS;
+const ogType = meta.type ?? "website";
+---
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" type="image/x-icon" href="/favicon.ico" />
+
+<title>{title}</title>
+<meta name="description" content={description} />
+<meta name="author" content="Parker Landon" />
+<meta name="keywords" content={keywords} />
+<meta name="theme-color" content="#b626a5" />
+<link rel="canonical" href={canonicalUrl} />
+
+<!-- KaTeX CSS -->
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
+  integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV"
+  crossorigin="anonymous"
+/>
+
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Fira+Mono:wght@400;500&family=Noto+Sans:wght@300;400;700&family=Noto+Serif:wght@300;400;500;700&display=swap"
+  rel="stylesheet"
+/>
+
+<!-- Open Graph -->
+<meta property="og:type" content={ogType} />
+<meta property="og:locale" content="en_US" />
+<meta property="og:url" content={canonicalUrl} />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+<meta property="og:site_name" content="Parker's Digital Domain" />
+<meta property="og:image" content={ogImageUrl} />
+<meta property="og:image:width" content={ogImageWidth} />
+<meta property="og:image:height" content={ogImageHeight} />
+<meta property="og:image:alt" content={title} />
+<meta property="profile:first_name" content="Parker" />
+<meta property="profile:last_name" content="Landon" />
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:site" content="@lordprkr" />
+<meta name="twitter:title" content={title} />
+<meta name="twitter:description" content={description} />
+<meta name="twitter:image" content={ogImageUrl} />

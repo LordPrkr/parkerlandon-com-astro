@@ -1,0 +1,29 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import PortfolioList from "@/components/portfolio/portfolio-list";
+import { TitleText } from "@/components/typography/title-text";
+import { TypographyH4 } from "@/components/typography";
+import AnchorText from "@/components/typography/anchor-text";
+import { projects } from "@/lib/portfolio";
+
+const meta = {
+  title: "Parker's Portfolio",
+  description: "A portfolio of Parker's projects and writings.",
+  url: "https://parkerlandon.com/portfolio",
+};
+---
+
+<BaseLayout meta={meta}>
+  <main>
+    <div class="flex flex-col items-center justify-center space-y-2 mb-8">
+      <TitleText className="mb-0">Parker&apos;s Portfolio</TitleText>
+      <TypographyH4 className="mt-0 text-zinc-500 text-center text-sm sm:text-xl">
+        Fullstack Software Engineer at Smartsheet
+      </TypographyH4>
+      <a target="_blank" href="/resume.pdf" rel="noopener noreferrer">
+        <AnchorText>View Resume</AnchorText>
+      </a>
+    </div>
+    <PortfolioList items={projects} client:load />
+  </main>
+</BaseLayout>

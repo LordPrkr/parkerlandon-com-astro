@@ -1,0 +1,198 @@
+---
+title: Testing Parsers Thoroughly with Property-Based Testing
+keywords: haskell, parsers, testing, functional programming
+description: Property-based testing is effective at revealing unconsidered edge cases! I compare unit testing to property-based testing and discuss my experience implementing property-based testing for a parser.
+url: https://parkerlandon.com/testing-parsers-thoroughly-with-property-based-testing
+ogImageUrl: https://adoring-jackson-1187ff.netlify.app/.netlify/functions/gen-opengraph-image?title=Testing%20Parsers%20Thoroughly%20with%20Property-Based%20Testing&tags=haskell,testing
+postnum: 3
+---
+
+> **Note:** I produced this article as part of a series of Haskell pieces I wrote while developing my senior thesis. That thesis is available now and contains a more polished version of this article. See [A Survey of Practical Haskell: Parsing, Interpreting, and Testing](https://digitalcommons.spu.edu/cgi/viewcontent.cgi?article=1224&context=honorsprojects&z=1717695924).
+
+I've been implementing property-based testing for the parser of my command-line JSON processing language, [hson](https://github.com/LordPrkr/hson). Without any additional context, take a look at the following test output:
+
+```txt
+*** Failed! Falsified (after 9993 tests and 3 shrinks):
+GetExpr
+  ( Get
+      { object =
+          VariableExpr
+            ( Variable
+                { varName =
+                    Token
+                      { tokenType = TokenIdentifier
+                      , literal = Just leaf
+                      }
+                }
+            )
+      , property =
+          Token
+            { tokenType = TokenIdentifier
+            , literal = Just let
+            }
+      }
+  )
+```
+
+If you're unfamiliar with property-based testing, the following may have crossed your mind:
+
+- Wow, 9993 tests?
+- What is a shrink?
+
+You might also wonder, _"What is `GetExpr ...` in the test output?"_ and _"Why did the test fail?"_
+
+First, let's consider how property-based testing is different than unit testing. When we write a unit test, we seek to answer the question, "Given a specific input, does our code produce the expected output (or side effects)?" A pattern for answering this question is [_arrange-act-assert_](https://automationpanda.com/2020/07/07/arrange-act-assert-a-pattern-for-writing-good-tests/):
+
+1. Fabricate a predefined input (arrange)
+2. Provide the input to the chunk of code we're testing (act)
+3. Verify that the received output matches the expected output (assert)
+
+Of course, we want to be confident that our code works for _all possible inputs_. If we're writing a test for a `divide(a, b)` function, we want to ensure that it produces an expected result for all numeric `a` and `b`. So we might repeat the arrange-act-assert process with, say, positive, negative, and fractional inputs.
+
+```ts
+describe('divide(a, b)', () => {
+  it('divides positive inputs', () => {
+    // arrange
+    const a = 6;
+    const b = 3;
+
+    // act
+    const result = divide(a, b);
+
+    // assert
+    expect(result).toBe(2);
+  });
+
+  it('divides negative inputs', () => {
+    ...
+  });
+
+  it('divides fractional inputs', () => {
+    ...
+  });
+});
+```
+
+We could never hope to test every possible input this way, but we can still be somewhat confident in our code if the tests pass for various kinds of inputs. However, the burden of generating a sufficient variety of inputs falls on us, the developers, and knowing which inputs are worth testing may demand considerable expertise or creativity. If, for example, we didn't think to test how our `divide(a, b)` function behaves when `b` is 0, we might encounter unexpected behavior or a runtime error when we call the function in circumstances when `b` is possibly 0.
+
+So, code verification via unit testing demands an understanding of the possible inputs that our code may receive. Unfortunately, this means that, in practice, unit tests written for existing code are only somewhat effective at revealing unexpected behavior. If we know all the possible inputs when testing a chunk of code, we probably considered and handled all the possible inputs when we wrote that code. And, if we fail to consider an edge case when we write a chunk of code, we're unlikely to consider that edge case as a possible input when we test that code.[^1]
+
+On the other hand, property-based testing, as the name implies, tests that a chunk of code abides by a property. For example, for our `divide(a, b)` function, we could write
+
+```txt
+for all numeric a, b
+such that b != 0
+divide(a, b) * b == a
+```
+
+The beauty of property-based testing is that, unlike unit testing, we're no longer asserting about a _specific_ output. Instead, we're asserting about a property of _all_ outputs given _any_ input that satisfies the conditions (e.g., numeric and nonzero `b`). Now, instead of manually checking that this property holds for some inputs, we can randomly generate thousands of inputs and assert that they all satisfy some property. The popular Haskell library [QuickCheck](https://hackage.haskell.org/package/QuickCheck-2.14.3/docs/Test-QuickCheck.html) facilitates this random, repeated input generation and output assertion for Haskell functions, and the initial test output I shared is an example of the results it produces.
+
+So, what test was I running on the hson parser to receive that output? The question I sought to answer was, "Given any valid expression input in the hson language, does my parser generate the appropriate parse tree?" To verify this behavior with property-based testing, I needed a method of generating arbitrary valid input expressions for my parser. A [common approach](https://stackoverflow.com/a/11000563) is to _pretty print_ an arbitrary valid parse tree. Pretty printing refers to the inverse of parsing: instead of turning a program into a parse tree, a pretty printer takes a parse tree and produces the program that would have generated it. So, the approach is to generate an arbitrary valid parse tree, pretty print it, and then parse the pretty printed program. If your pretty printer is correct and the arbitrary input expression is valid, then your parser is correct if the output parse tree matches that input parse tree. The property can be expressed as follows:
+
+```txt
+for all parse trees a
+such that a is valid
+parse(prettyPrint(a)) == a
+```
+
+Note that when I say a parse tree is "valid," I mean that it's "possible." For example, the parse tree should follow the precedence rules of the language. Expressions with lower precedence are never direct children of expressions with higher precedence; binary expressions representing addition should never be children of binary expressions representing multiplication.
+
+The above property, expressed in English, is that the composition of `parse` and `prettyPrint` forms the identity function (or equivalently, that `parse` and `prettyPrint` are inverses of each other). The use of `==` is somewhat sneaky because I haven't explicitly defined what it means for two parse trees to be equal. For my purposes, I use `==` to mean that the nodes within the two parse trees have equal types and positions and that their associated data is equal in all the ways I care.
+
+Encoding this test in Haskell requires only a simple function that maps an expression `Expr` to a test result `Bool`.
+
+```hs
+checkExpressionParser :: Expr -> Bool
+checkExpressionParser ast = case runHSONExprParser (prettyPrintExpr ast) of
+  Left _ -> False
+  Right a -> ast == a
+```
+
+The type `Expr` refers to a node in the hson expression parse tree, so the `checkExpressionParser` test takes a parse tree as input and produces a boolean value. The `runHSONExprParser (prettyPrintExpr ast)` operation corresponds to `parse(prettyPrint(a))`. If the parser produces an error, I return `False`. Otherwise, I assert that the produced parse tree `a` matches the input parse tree `ast`.
+
+I can run this test with `quickCheck checkExpressionParser`, but QuickCheck requires I first define `Expr` as an instance of the `Arbitrary` typeclass. This entails telling QuickCheck how it should generate arbitrary values for `Expr`, which, by and large, was the most difficult aspect of implementing property-based testing for my parser. To summarize the challenges I faced,
+
+- I wanted QuickCheck to produce _valid_ parse trees, so I had to encode precedence rules for operations and eliminate impossible programs. This meant ensuring that, for example, higher precedence operations were always children of lower precedence operations.
+- Because parse trees can grow exponentially (especially when your language includes arrays and dictionaries), I had to encode sizing rules to prevent QuickCheck from generating infinitely large parse trees.
+
+Besides facing bugs with my `Arbitrary` instance definition for `Expr`, I faced two other kinds of errors:
+
+1. The pretty printer did not correctly convert a parse tree to a program. For example, it would print the contents of a string literal without surrounding it with quotes.
+2. The parser did not correctly parse a generated input.
+
+Thankfully, discerning between the three error sources—parse tree generator, pretty printer, and parser—was straightforward and could be accomplished by simple inspection. I wrote a simple `debugSamples` function that would generate several arbitrary values of `Expr` and print both their parse tree representations and pretty-printer outputs. An invalid parse tree indicated an error with the `Arbitrary` instance definition. An unexpected output program given a valid parse tree (e.g., a string literal printed without surrounding quotes) indicated a bug with the pretty printer. Otherwise, there was an error with the parser (which means our test successfully identified an edge case!).
+
+Defining `Arbitrary` instances also optionally entails specifying how your instances can `shrink`. The `shrink` operation is performed by QuickCheck when it discovers a counterexample (i.e., a generated input that leads to a failed assertion) to produce a simpler[^2] counterexample. Implementing `shrink` means defining a function `shrink :: a -> [a]` that returns a list of simpler values from a given generated value. When QuickCheck needs to shrink a value, it will call its defined `shrink` function and produce an ordered list of candidates from which it will try to derive a simpler counterexample. By default, `shrink` produces an empty list and thus QuickCheck will not try to shrink the value.
+
+Meticulously implementing `shrink` for complex recursive structures like `Expr` has a substantial payoff. From the original test output, we see that QuickCheck was able to simplify its counterexample to a singular `GetExpr` after just three shrinks!
+
+```txt
+*** Failed! Falsified (after 9993 tests and 3 shrinks):
+GetExpr
+  ( Get
+      { object =
+          VariableExpr
+            ( Variable
+                { varName =
+                    Token
+                      { tokenType = TokenIdentifier
+                      , literal = Just leaf
+                      }
+                }
+            )
+      , property =
+          Token
+            { tokenType = TokenIdentifier
+            , literal = Just let
+            }
+      }
+  )
+```
+
+Speaking of this example test output, you may have gathered by now that `GetExpr` and the data following it are nodes and values within an arbitrary hson parse tree. The corresponding program for this parse tree is as follows:
+
+```txt
+leaf.let
+```
+
+Because QuickCheck could produce this simple counterexample, I discovered an unconsidered edge case with my parser. Namely, my parser rejected `leaf.let` because the property `let` is a reserved word in my language, and the `identifier` parser combinator I used to parse object properties fails when it encounters reserved words.
+
+```hs
+parseGet :: HSONParser (Expr -> Expr)
+parseGet = do
+  dot
+  -- `identifier` fails if the parsed string is a reserved word
+  property <- identifier
+  return $ \object -> GetExpr Get{object = object, property = property}
+```
+
+The failed test also made me consider that my parser might be rejecting reserved words that appear as properties in object literal expressions like the following:
+
+```ts
+{ false: true }
+```
+
+Indeed, when I ran this program through my interpreter, I encountered an error.
+
+```txt
+(line 1, column 8):
+unexpected reserved word "false"
+expecting expression
+```
+
+And I discovered that the cause was, again, my use of the `identifier` parser combinator.
+
+```hs
+keyValue = do
+  k <- try tokenString <|> identifier -- the culprit!
+  colon
+  v <- expression
+  return (k, Just v)
+```
+
+So, thanks to the test, I discovered two bugs preventing reserved words from being defined and accessed as properties of objects. That's an effective test!
+
+[^1]: Still, unit tests can ensure that we handled each kind of input correctly and can prevent regressions after a refactor. I also love unit tests as a source of API documentation!
+
+[^2]: The [QuickCheck documentation](https://hackage.haskell.org/package/QuickCheck-2.14.3/docs/Test-QuickCheck.html#g:5) helps define what we mean by a "simpler value": it recommends that, in our `shrink` definitions, we try 1) shrinking a term to any of its immediate subterms, 2) recursively applying shrink to all immediate subterms, and 3) replacing a constructor by a simpler constructor. We should also ensure that `shrink` produces values that are "smaller" in some way to avoid _infinite shrinkage_. So, for a parse tree, a value should shrink to either one of its children or a leaf.
+

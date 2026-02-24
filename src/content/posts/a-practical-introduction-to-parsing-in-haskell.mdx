@@ -1,0 +1,141 @@
+---
+title: A Practical Introduction to Parsing in Haskell
+keywords: haskell, parsers, interpreters, functional programming
+description: Understanding parsing in Haskell does not require monad expertise! I briefly demonstrate the use of parser combinators in hson and provide practical descriptions and analogies for the Parser monad.
+url: https://parkerlandon.com/posts/a-practical-introduction-to-parsing-in-haskell
+ogImageUrl: https://adoring-jackson-1187ff.netlify.app/.netlify/functions/gen-opengraph-image?title=A%20Practical%20Introduction%20to%20Parsing%20in%20Haskell&tags=haskell,functional%20programming
+postnum: 2
+---
+
+> **Note:** I produced this article as part of a series of Haskell pieces I wrote while developing my senior thesis. That thesis is available now and contains a more polished version of this article. See [A Survey of Practical Haskell: Parsing, Interpreting, and Testing](https://digitalcommons.spu.edu/cgi/viewcontent.cgi?article=1224&context=honorsprojects&z=1717695924).
+
+In my JSON processing language [hson](https://github.com/LordPrkr/hson), a program (script) is a series of variable declarations followed by an expression, as illustrated by the following type definition:
+
+```haskell
+type Program = ([VarStmt], Expr)
+```
+
+The `program` function within the `Parser` module is the entry point for the recursive descent parser; it's responsible for parsing and constructing a `Program`. Even those uninitiated to Haskell could make sense of its definition:
+
+```haskell
+program :: HSONParser Program
+program = do
+  declarations <- many varDecl
+  expr <- expression
+  eof
+  return (declarations, expr)
+```
+
+However, the type of `program` is less intuitive. For example, what's an `HSONParser`? Looking at the rest of the `Parser` module, we see it's a type that wraps the result of every parse operation.
+
+```haskell
+...
+
+varDecl :: HSONParser VarStmt
+varDecl = do
+  letVar
+  declName <- identifier
+  equal
+  initializer <- expression
+  semicolon
+  return $ VarDeclStmt VarDecl{declName = declName, initializer = initializer}
+
+expression :: HSONParser Expr
+expression = pipeForward
+
+pipeForward :: HSONParser Expr
+pipeForward = do
+  expr <- ternary
+  try
+    ( do
+        tokenPipeForward
+        f <- chainl1 parsePipeInto parsePipeForward
+        return $ f expr
+    )
+    <|> return expr
+
+...
+```
+
+In some sense, that's exactly what `HSONParser` is: a "wrapper." It wraps the type resulting from a parse operation and says, "You can have what's inside, but you'll need to unwrap me." What we _want_ is the `Program` resulting from `program`, or the `VarStmt` resulting from `varDecl`. What we're getting is a `HSONParser Program`, or an `HSONParser VarStmt`. This observation inspires two questions:
+
+1. Why are our parser results wrapped in the `HSONParser` type?
+2. How do we unwrap `HSONParser` and get our results?
+
+We can explore the first question by observing that none of our parse functions operate on an input argument. For example, we see from its definition that `varDecl` looks to parse a "let" (`letVar`), followed by an `identifier`, followed by an "=" (`equal`), followed by an `expression`, followed by a ";" (`semicolon`). None of these operations require us to drill an input through their arguments; we don't use them like mappings from input to result. Instead, we build up and use complex parsers like semicolon from primitives that may or may not themselves operate directly on the input.
+
+This technique is similar to how a `Parser` class could provide methods that abstract over operations on its internal state (e.g., `advance`, `consume`, and `peek`). These methods wouldn't require an argument because the input would be provided when the `Parser` is first instantiated.
+
+```ts
+// provide the tokens upon construction
+const parser = new Parser(tokens)
+
+// `Parse()` operates on the internal `tokens` state, not an argument
+const result = parser.Parse()
+```
+
+The class analogy extends to help explain the `HSONParser` wrapper: just as you can't use an instance method of a class until you instantiate it, you can't use the result of a parse operation until you unwrap it. Moreover, just as a `Parser` class might require some data in its constructor to instantiate it, the `HSONParser` wrapper requires data to unwrap it.
+
+So, the result stored within an `HSONParser` wrapper requires some auxiliary data before it can be accessed outside the context of a parse operation. However, within an `HSONParser` context (i.e., an operation that returns an `HSONParser` result), we're free to unwrap and operate on `HSONParser` results. Hence, our original `program :: HSONParser Program` operation can construct a `Program` using the `Expr` from `expression :: HSONParser Expr` and  `VarStmt` from `varDecl :: HSONParser VarStmt`. This "chaining" of `HSONParser` results allows us to compose more primitive parse operations into one single parser that gives us the desired result (e.g., a `Program`).
+
+So far, I've described how the `HSONParser` type allows us to "chain" parsers and build abstractions. It's worth noting that Haskell does not have some divine, preexisting knowledge of what should occur when parsers are chained in this way. Under the hood, `HSONParser` defines _how_ it should perform this chaining (i.e., when it declares itself an instance of the `Monad` typeclass). In a similar way, `HSONParser` also defines how failure can be reported and handled. We can observe this in the `primary` function, which is responsible for parsing primary expressions.
+
+```haskell
+primary :: HSONParser Expr
+primary =
+  try parseNumber
+    <|> try parseString
+    <|> try parseDollar
+    <|> try parseTrue
+    <|> try parseFalse
+    <|> try parseNull
+    <|> try parseIdent
+    <|> try parseArray
+    <|> try parseObject
+    <|> try parseGrouping
+    <|> try parseArrowFunction
+    <?> "expression"
+```
+
+The `try` combinator attempts to perform the parse operation but, when failure occurs, does not consume any input. The `(<|>)` combinator returns the parse result on its left-hand side if its successful, and returns the parse result on its right-hand side otherwise. Finally, the `(<?>)` combinator allows us to label the expected parse result: if its left-hand size fails, it returns a helpful error message containing the label on the right-hand side.
+
+```zsh
+(line 2, column 1):
+unexpected end of input
+expecting expression
+```
+
+So, the `HSONParser` type affords us utilities like failure, choice, and chaining for our parser results. No matter what _kind_ of result a parse operation produces (e.g., an `Expr` or `VarStmt`), we get to use common operations between those results because they're all wrapped up in the same `HSONParser` type.
+
+Advancing to the second question, how do we finally unwrap the `HSONParser`? Its type definition will give us a hint:
+
+```haskell
+type HSONParser = ParsecT T.Text () Identity
+```
+
+We see that `HSONParser` is actually an alias for the `ParsecT` type. If you're unfamiliar with [Parsec](https://hackage.haskell.org/package/parsec-3.1.17.0/docs/Text-Parsec.html), it's a Haskell library that defines all the parser functionality I've described above alongside numerous parser combinator primitives. The Parsec documentation provides us with a definition of `ParsecT`:
+
+> `ParsecT s u m a` is a parser with stream type `s`, user state type `u`, underlying monad `m` and return type `a`.
+
+So, `HSONParser` is defined as a parser that takes an input stream of type `Text`, has no user state, and has the underlying monad `Identity`. That last bit is unimportant (the `Identity` monad essentially means "no effect"), so really `HSONParser` is defined simply as a `Text` parser.
+
+To unwrap a `Text` parser, we simply need to provide it with a `Text` input! Here's how it's done in hson:
+
+```haskell
+parseHSON :: T.Text -> Either ParseError Program
+parseHSON s = runIdentity $ runParserT program () "" s
+```
+
+The `parseHSON` function receives some `Text` input and runs the `program` parser (the root of our recursive descent) with it. The `()` corresponds to the empty user state `()` option in the `HSONParser` definition, and the empty string is passed to an optional `filePath` parameter. The `runParserT` thus unwraps the `HSONParser` type and returns `Identity (Either ParseError Program)`, which we again unwrap with `runIdentity` to get `Either ParseError Program`. Of course, we originally desired a `Program`, but the `Either ParseError Program` captures the fact that the parser might have failed given the input. In hson, we simply print the error if it occurred or run the program otherwise.
+
+```haskell
+run :: Maybe BL.ByteString -> T.Text -> Options -> IO ()
+run json hson opts = case parseHSON hson of
+  Left err -> print err
+  Right prog -> do
+    when (doPrintAst opts) (print prog)
+    runProg json prog
+```
+
+In summary, the `HSONParser` type is simply an alias for `ParsecT`, which itself affords us a "common language" for working with various parse results. In describing `HSONParser`, I've avoided calling it a "monad" to prevent any unnecessary intimidation. However, `HSONParser` and the underlying `ParsecT` _is_ a monad or, more specifically, a monad _transformer_ (hence the "T" in `ParsecT`). So, I hope that even if you lack a confident understanding of monads or monad transformers, you now have a better sense of their utility.
+

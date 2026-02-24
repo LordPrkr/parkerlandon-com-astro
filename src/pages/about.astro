@@ -1,0 +1,138 @@
+---
+import MdxLayout from "@/layouts/MdxLayout.astro";
+import BodyText from "@/components/typography/body-text";
+import AnchorText from "@/components/typography/anchor-text";
+import {
+  TypographyUL,
+  TypographyBlockquote,
+} from "@/components/typography";
+
+const meta = {
+  title: "About Parker",
+  url: "https://parkerlandon.com/about",
+  ogImageUrl:
+    "https://parkerlandon.com/default-og-image.png",
+};
+---
+
+<MdxLayout meta={meta}>
+  <BodyText>Hey, I'm Parker Landon {"\u{1F44B}"}</BodyText>
+
+  <BodyText>
+    I'm currently working as a Fullstack Software Engineer at Smartsheet. I just
+    graduated from Seattle Pacific University with three majors—Computer Science,
+    Applied Mathematics, and Honors Liberal Arts—and a minor in Data Analytics.
+    Here's a timeline of where I've been and where I'm headed.
+  </BodyText>
+
+  <TypographyUL>
+    <li>
+      <strong>2012</strong>: When the librarian restricted my computer lab access
+      to Flash games like Adventure Quest and Bloons Tower Defense, I tried to
+      make my own Flash game website. So, I lept down the rabbit hole and began
+      learning HTML, CSS, and JavaScript. Eventually, I discovered that coding
+      was not just a means to that Flash game end but an end in and of itself: it
+      was fun.
+    </li>
+    <li>
+      <strong>2019</strong>: I began programming again through an AP Computer
+      Science class and eventually started working for{" "}
+      <a href="https://egghead.io" target="_blank"><AnchorText>egghead.io</AnchorText></a>{" "}
+      reviewing older web development courses hosted on their platform. This work
+      reignited my interest in web development and, over the following year, I
+      picked up React, TypeScript, and several other tools.
+    </li>
+    <li>
+      <strong>2020</strong>: I participated in a Portfolio Project Club hosted by
+      egghead. The goal of this club was for each member to design and build a
+      web project that would make for an impressive portfolio piece. I built an
+      app called{" "}
+      <a href="https://github.com/LordPrkr/tends" target="_blank"><AnchorText>tends</AnchorText></a>{" "}
+      that simplified the tracking of quantities (e.g., calories, exercise, etc.)
+      for users. The club also presented the chance to publish a technical case
+      study detailing the design and build process; I eagerly took advantage of
+      that opportunity, and now have my own{" "}
+      <a
+        href="https://egghead.io/blog/saas-applicatiodn-with-next-js-stripe-and-firebase"
+        target="_blank"
+      >
+        <AnchorText>technical case study living on egghead.io</AnchorText>
+      </a>.
+    </li>
+    <li>
+      <strong>2021</strong>: I continued my work as an intern for egghead.io,
+      taking on GitHub issues, contributing to the site, and continuing to review
+      courses. I also got to lead my own Portfolio Project Club iteration, now
+      focusing on state management in React. During this internship experience, I
+      began to feel confident as a web developer. As the summer ended and my
+      sophomore year of college started, I felt ready to take on large-scale
+      projects and demanding developer responsibilities.
+    </li>
+    <li>
+      <strong>2022</strong>: During the winter term of my sophomore year of
+      college, I began developing a full-stack participation-tracking application
+      (called{" "}
+      <a href="https://knowted.app" target="_blank"><AnchorText>knowted</AnchorText></a>) for
+      professors to use in their courses. This web application integrates with
+      the Canvas Learning Management System to streamline student participation
+      tracking for course instructors. You can read more about this project in my{" "}
+      <a href="/portfolio"><AnchorText>portfolio section</AnchorText></a>.
+    </li>
+    <li>
+      <strong>2022, continued</strong>: I also began applying to countless
+      software engineering summer internships. Eventually, after some 100
+      applications and several interviews, I landed a software engineering
+      internship with Smartsheet. My task for that summer was to work with my
+      assigned mentor, product managers, designers, UX researchers, and other
+      engineers to design and implement a solution based on user stories and
+      requirements. The experience facilitated me working with every layer in the
+      tech stack, from the React/TypeScript frontend to the Java backend and
+      MySQL database, and ultimately it confirmed my passion for software
+      engineering.
+    </li>
+    <li>
+      <strong>2023</strong>: I continued building personal projects and excelling
+      in school. I returned to Smartsheet as a summer intern once more, this time
+      working on a decoupling project that involved refactoring legacy frontend
+      code.
+    </li>
+    <li>
+      <strong>2024</strong>: I graduated from Seattle Pacific University with a
+      4.0 GPA across three majors and a minor. I published a{" "}
+      <a
+        href="https://digitalcommons.spu.edu/honorsprojects/218/"
+        target="_blank"
+      >
+        <AnchorText>research paper</AnchorText>
+      </a>{" "}
+      for my Honors degree about implementing parsers and interpreters in
+      Haskell. I returned to Smartsheet, joining the Conversations team as a
+      full-time Software Engineer.
+    </li>
+    <li><strong>2025</strong>:</li>
+  </TypographyUL>
+
+  <BodyText>
+    I'm so busy in the best way possible. Every day I code and read to improve
+    as an engineer. I'm traveling and enjoying life more than ever. It's not
+    easy, but I'm so aligned with this trajectory, and I only want to do more. My
+    extra-work career goals for now are,
+  </BodyText>
+
+  <TypographyUL>
+    <li>Write more</li>
+    <li>
+      Make more content (check out my{" "}
+      <a href="https://www.youtube.com/@prkrlndn" target="_blank"><AnchorText>YouTube</AnchorText></a>)
+    </li>
+    <li>Build an awesome product (coming soon)</li>
+  </TypographyUL>
+
+  <BodyText>Otherwise, here's my quote for the year.</BodyText>
+
+  <TypographyBlockquote>
+    We who cut mere stones must be envisioning cathedrals.
+  </TypographyBlockquote>
+
+  <BodyText>Cheers.</BodyText>
+</MdxLayout>

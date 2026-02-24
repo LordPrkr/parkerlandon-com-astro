@@ -1,0 +1,230 @@
+---
+title: Consumer Interfaces in Go
+keywords: go, patterns
+description: Go is widely considered a simple programming language, and how it differs from others may initially seem minor. However, several well-designed language features, like Go's concept of interfaces, set it apart. I discuss Go interfaces, implicit implementation, and a way to stop writing Go like you would Java.
+url: https://parkerlandon.com/posts/consumer-interfaces-in-go
+ogImageUrl: https://adoring-jackson-1187ff.netlify.app/.netlify/functions/gen-opengraph-image?title=Consumer%20Interfaces%20in%20Go&tags=go,patterns
+postnum: 7
+---
+
+import YoutubeEmbed from "../../components/portfolio/youtube-embed.tsx";
+
+It's easy to fall into the trap of writing Go like you would an object-oriented-centric programming language you previously used.
+
+> You write Go like a Java developer.
+
+I even made this mistake in a Go video tutorial I published.
+
+<YoutubeEmbed embedUrl="https://www.youtube.com/embed/g9x_KMVLPfs?si=OOgAPUU-Qok11JNI" style={{marginTop: 16}} />
+
+The mistake is subtle, but it will haunt you as your application grows in complexity. Let me explain.
+
+### Controller-Service-Repository
+
+In this video, I develop an API endpoint for fetching books and demonstrate how interfaces and dependency injection can make code more easily testable. I first break the route handler logic into three packages with three separate responsibilities.
+
+#### The Controller
+
+The `controller` package is responsible for receiving the HTTP request and writing a response.
+
+For example, the `BookController` handles an HTTP request for all books (i.e., `GET /books`) by accepting the HTTP `Request` and `ResponseWriter` types as arguments.
+
+```go
+type BookController interface {
+	HandleGetAllBooks(w http.ResponseWriter, r *http.Request)
+}
+```
+
+#### The Service
+
+The `service` package is responsible for the "business logic." The `controller` package calls into methods of the `service` package with parameters from the HTTP request, and the `service` methods fetch and map the data before returning it to the `controller` to construct the appropriate HTTP response.
+
+For example, the `BookService` exposes a method `GetAllBooks` that returns a slice of books. An implementation of the `HandleGetAllBooks` controller method could call this `GetAllBooks` service method to fetch the necessary books for the response.
+
+```go
+type BookService interface {
+	GetAllBooks(ctx context.Context) ([]query.Book, error)
+}
+
+func (c *BookControllerImpl) HandleGetAllBooks(w http.ResponseWriter, r *http.Request) {
+	books, err := c.bookService.GetAllBooks(r.Context())
+	// ... write a response containing `books`
+}
+```
+
+#### The Repository
+
+The `repository` package is responsible for fetching data from persistent data stores. The `service` package calls into the `repository` package for the requisite data before it maps and returns a result to the `controller`.
+
+Since my simple Book route example doesn't do any data mapping in the `service` layer, the `BookRepository` interface looks the same as `BookService`. However, an implementation of the `BookRepository` method would make database queries or call into an ORM.
+
+
+```go
+type BookRepository interface {
+	GetAllBooks(ctx context.Context) ([]query.Book, error)
+}
+```
+
+This controller-service-repository structure is a tried and true pattern I recommend for implementing any backend service, regardless of programming language. If you're curious, I give a more in-depth explanation in [this YouTube video](https://www.youtube.com/watch?v=Fkvu_QDt5xk).
+
+My mistake in the video isn't specific to using the controller-service-repository pattern, but to my use of interfaces and Go.
+
+### Interface Implementation
+
+In most programming languages with interfaces, an interface is _explicitly implemented_. For example, in Kotlin, a `Rectangle` class with an `area(): Int` method does not naturally implement a `Shape` interface with the same method declaration.
+
+```kt
+interface Shape {
+    fun area(): Int
+}
+
+class Rectangle(private val length: Int, private val width: Int) {
+    fun area(): Int {
+        return length * width
+    }
+}
+
+fun main() {
+  // Does not compile! Rectangle does not automatically implement Shape.
+  val rect: Shape = Rectangle(3, 4)
+  println(rect.area())
+}
+```
+
+The `Rectangle` class must first explicitly _implement_ the interface and _override_ the `area` method. Only then will `Rectangle` objects be assignable to the `Shape` type.
+
+```kt
+// The `: Shape` denotes interface implementation.
+class Rectangle(private val length: Int, private val width: Int) : Shape {
+    // Notice the addition of `override`.
+    override fun area(): Int {
+        return length * width
+    }
+}
+
+fun main() {
+    val rect: Shape = Rectangle(3, 4)
+    println(rect.area())
+}
+```
+
+However, in Go, interfaces are _implicitly implemented_: a `struct` does not need to declare that it implements an interface before being assignable to that interface. In the example below, a `Rectangle` struct is assignable to a variable with type `Shape` without any declared implementation.
+
+```go
+type Shape interface {
+	area() int
+}
+
+type Rectangle struct {
+	length int
+	width  int
+}
+
+func (r Rectangle) area() int {
+	return r.length * r.width
+}
+
+func main() {
+	var shape Shape
+	shape = Rectangle{length: 3, width: 4}
+	println(shape.area())
+}
+```
+
+The upshot of implicit versus explicit interface implementation is that, with explicit implementation, the interface must be declared and implemented by the _provider_ of the class. If a package exports a class, and that class is expected to implement an interface, that package must also declare, implement, and export the interface. On the other hand, with implicit implementation, the _consumer_ of a class can define the interface, and the class will automatically extend it.
+
+### The Mistake
+
+The mistake I made in the video is that I defined the interface of each controller, service, and repository on the _provider_ side, not the consumer side. The `BookController`, `BookService`, and `BookRepository` interfaces are defined in the same packages from which their implementations are exported.
+
+```go
+package service
+
+type BookService interface {
+	GetAllBooks(ctx context.Context) ([]query.Book, error)
+}
+
+type BookServiceImpl struct {
+	bookRepository repository.BookRepository
+}
+
+func (s *BookServiceImpl) GetAllBooks(ctx context.Context) ([]query.Book, error) {
+	return s.bookRepository.GetAllBooks(ctx)
+}
+```
+
+The consequences of this mistake are benign in small applications. However, as your application grows, so too will your interfaces.
+
+```go
+type BookService interface {
+	GetAllBooks(ctx context.Context) ([]query.Book, error)
+	GetBookById(ctx context.Context, id string) (*query.Book, error)
+	CreateBook(ctx context.Context, params *CreateBookParams) (*query.Book, error)
+	UpdateBookById(ctx context.Context, id string, params *UpdateBookParams) (*query.Book, error)
+	DeleteAllBooks(ctx context.Context) ([]query.Book, error)
+	DeleteBookById(ctx context.Context, id string) (*query.Book, error)
+	...
+}
+```
+
+And, if you define your interfaces on the provider side, you force all of your consumers to implement the _entire_ interface. However, if you allow your consumers to define the interface, they can define it with only the methods they _need_.
+
+#### Example Provider
+
+```go
+func NewBookService(bookRepository repository.BookRepository) *BookServiceImpl {
+	return &BookServiceImpl{
+		bookRepository: bookRepository,
+	}
+}
+
+func (s *BookServiceImpl) GetAllBooks(ctx context.Context) ([]query.Book, error) { ... }
+
+func (s* BookServiceImpl) GetBookById(ctx context.Context, id string) (*query.Book, error) { ... }
+
+func (s* BookServiceImpl) CreateBook(ctx context.Context, params *CreateBookParams) (*query.Book, error) { ... }
+
+func (s* BookServiceImpl) UpdateBookById(ctx context.Context, id string, params *UpdateBookParams) (*query.Book, error) { ... }
+
+func (s* BookServiceImpl) DeleteAllBooks(ctx context.Context) ([]query.Book, error) { ... }
+
+func (s* BookServiceImpl) DeleteBookById(ctx context.Context, id string) (*query.Book, error) { ... }
+```
+
+#### Example Consumer
+
+```go
+type BookGetter interface {
+	// This BookController only cares about `GetAllBooks`, nothing else!
+	GetAllBooks(ctx context.Context) ([]query.Book, error)
+}
+
+type BookControllerImpl struct {
+	bookGetter BookGetter
+}
+
+func (c *BookControllerImpl) HandleGetAllBooks(w http.ResponseWriter, r *http.Request) {
+	books, err := c.bookGetter.GetAllBooks(r.Context())
+	if err != nil {
+		WriteError(w, err)
+		return
+	}
+	if err := WriteJSON(w, http.StatusOK, books); err != nil {
+		WriteError(w, err)
+		return
+	}
+}
+```
+
+Another subtle change I've made in the examples above is that `NewBookService` no longer returns a `BookService` interface but instead the concrete implementation (i.e., `BookServiceImpl`). Alongside turning provider interfaces into consumer interfaces, this change prevents the provider from forcing all consumers to use a particular abstraction. Also, now that the `BookService` interface is defined on the consumer's side, the provider would need to _depend_ on the consumer for the interface, creating a dependency cycle.
+
+### General Wisdom
+
+I give a special thanks to [_100 Go Mistakes and How to Avoid Them_ by Teiva Harsanyi](https://www.manning.com/books/100-go-mistakes-and-how-to-avoid-them), specifically sections 6 and 7, for helping me recognize my misuse of Go interfaces. Drawing from this book, here are two wise maxims by which you may orient your coding.
+
+> Abstractions should be discovered, not created.
+
+> Don't design with interfaces, discover them.
+> \- Rob Pike
+
+

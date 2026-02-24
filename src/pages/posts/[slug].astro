@@ -1,0 +1,53 @@
+---
+import MdxLayout from "@/layouts/MdxLayout.astro";
+import { getCollection, render } from "astro:content";
+import BodyText from "@/components/typography/body-text";
+import MdxAnchor from "@/components/mdx-anchor";
+import {
+  TypographyH1,
+  TypographyH2,
+  TypographyH3,
+  TypographyH4,
+  TypographyUL,
+  TypographyOL,
+  TypographyBlockquote,
+} from "@/components/typography";
+
+export async function getStaticPaths() {
+  const posts = await getCollection("posts");
+  return posts.map((post) => ({
+    params: { slug: post.id },
+    props: { post },
+  }));
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+
+const meta = {
+  title: post.data.title,
+  description: post.data.description,
+  url: post.data.url ?? `https://parkerlandon.com/posts/${post.id}`,
+  keywords: post.data.keywords,
+  ogImageUrl: post.data.ogImageUrl,
+  ogImageWidth: post.data.ogImageWidth,
+  ogImageHeight: post.data.ogImageHeight,
+  type: "article",
+};
+---
+
+<MdxLayout meta={meta}>
+  <Content
+    components={{
+      h1: TypographyH1,
+      h2: TypographyH2,
+      h3: TypographyH3,
+      h4: TypographyH4,
+      p: BodyText,
+      ul: TypographyUL,
+      ol: TypographyOL,
+      blockquote: TypographyBlockquote,
+      a: MdxAnchor,
+    }}
+  />
+</MdxLayout>

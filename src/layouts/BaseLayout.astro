@@ -1,0 +1,32 @@
+---
+import "@/styles/globals.css";
+import Head from "@/components/Head.astro";
+import PageHeader from "@/components/layouts/ui/page-header";
+import PageFooter from "@/components/layouts/ui/page-footer";
+import type { PageMetadata } from "@/lib/types/PageMetadata";
+
+interface Props {
+  meta?: PageMetadata;
+}
+
+const { meta } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <Head meta={meta} />
+  </head>
+  <body>
+    <div
+      class="flex min-h-screen flex-col items-center justify-between p-4 font-body"
+      style="--font-logo: 'Noto Serif', serif; --font-heading: 'Noto Serif', serif; --font-body: 'Noto Serif', sans-serif; --font-sans: 'Noto Sans', sans-serif; --font-mono: 'Fira Mono', monospace;"
+    >
+      <div class="flex flex-col items-center w-full">
+        <PageHeader client:load />
+        <slot />
+      </div>
+      <PageFooter client:load />
+    </div>
+  </body>
+</html>

@@ -1,0 +1,477 @@
+---
+title: A Survey of Practical Haskell
+keywords: haskell, functional programming
+description: Wondering why Haskell is so notable? I introduce the Haskell programming language and pure functional programming more broadly, providing many examples and avoiding as much jargon as possible.
+url: https://parkerlandon.com/posts/a-survey-of-practical-haskell
+ogImageUrl: https://adoring-jackson-1187ff.netlify.app/.netlify/functions/gen-opengraph-image?title=A%20Survey%20of%20Practical%20Haskell&tags=haskell,functional%20programming
+postnum: 4
+---
+
+> **Note:** I produced this article as part of a series of Haskell pieces I wrote while developing my senior thesis. That thesis is available now and contains a more polished version of this article. See [A Survey of Practical Haskell: Parsing, Interpreting, and Testing](https://digitalcommons.spu.edu/cgi/viewcontent.cgi?article=1224&context=honorsprojects&z=1717695924).
+
+This article presents an introduction to the Haskell programming language and pure functional programming more broadly. My goal is to demonstrate how Haskell and functional programming are _practical tools_ for development, so I provide plenty of examples and avoid as much as possible the weeds of academic theory and jargon. I begin by illustrating types and functions in Haskell, and continue through currying, polymorphic types, type classes, and parameterized types. I finish with an introduction to the `Functor`, `Applicative`, and `Monad` typeclasses, which structure effectful computations and provide common operations for working with parameterized types.
+
+### Haskell Types and Functions
+
+Haskell is a statically-typed programming language, meaning that the type of each value is known at compile time and that programs with type errors will fail to compile. In Haskell, every value has an associated type. We can explicitly declare the type of a value with the `::` symbol.
+
+```hs
+number :: Int
+listOfNumbers :: [Int]
+numberTuple :: (Int, Int)
+```
+
+Functions are values, too, and therefore also have types. The `->` symbol is used to denote the type of a function mapping.
+
+```hs
+length :: [Int] -> Int
+```
+
+The statement above declares that the function `length` maps a list of integers `[Int]` to a single integer `Int`. The semantics of `length` is intuitive: given a list of integers, return the number of elements. However, notice that `length` is not very flexible: we couldn't use it to find the length of a list of characters, for example. Fortunately, Haskell provides _polymorphic_ types, which enables type declarations to include _type variables_ that can be instantiated to any type.[^1] For example, the type `[a]` includes the type variable `a` and denotes a list of any type. Using polymorphic types, the type of `length` can be rewritten to be more reusable.
+
+```hs
+length :: [a] -> Int
+```
+
+We can apply a function `f` to an argument `a` with the syntax `f a`. For example, we can compute the length of a `list :: [Int]` with `length list`.
+
+```hs
+listLength :: Int
+listLength = length list
+```
+
+What about functions with two or more parameters? We could define a trivial function `add`, for example, that returns the sum of two `Int` arguments. A first pass at the type declaration of `add` might group the two parameters into a tuple:
+
+```hs
+add :: (Int, Int) -> Int
+add (x, y) = x + y
+```
+
+The above definition of `add` maps `(Int, Int)` tuples to `Int` results. Applying `add` to the values `1` and `2` entails providing `add` with the tuple `(1, 2)`.
+
+Now, consider the following new definition of `add`:
+
+```hs
+add :: Int -> Int -> Int
+add x y = x + y
+```
+
+The `->` symbol is right-associative, so `Int -> Int -> Int` implicitly means `Int -> (Int -> Int)` and can be read as "a function that maps an `Int` to a function that maps an `Int` to an `Int`". This style of writing a function with two or more parameters as a function mapping a single argument to a function with a single parameter is called _currying_.[^2]
+
+With our new, curried type definition, we can apply `add` to `1` and `2` by writing `add 1 2`. Function application is left-associative, so `add 1 2` is equivalent to `(add 1) 2`. From this formulation, it's clear that we could extract `(add 1)` into its own function `increment`!
+
+```hs
+increment :: Int -> Int
+increment = add 1
+
+increment 2 -- this is the same as (add 1) 2!
+```
+
+Currying enables the simple construction of specific operations from general ones, making functions more extensible and robust. Thus, currying is the default style for function definitions in Haskell.
+
+So far, we've defined functions using equations (e.g., `add x y = x + y`). Alternatively, we can define functions with lambda expressions, which have arguments and a body like any other function but do not have a name. For example, we can define a new function `add2` to be the lambda expression `\x y -> x + y`. Just like `add`, `add2` takes two arguments, `x` and `y`, and returns their sum.
+
+```hs
+add2 :: Int -> Int -> Int
+add2 = \x y -> x + y
+```
+
+Like the original definition of `add`, this new definition takes two arguments, `x` and `y`, and returns their sum. Lambda expressions are commonly used to define arguments for higher-order functions.
+
+### Typeclasses
+
+The current definition of `add` can only be applied to _integer_ arguments. It would be more convenient if `add` supported other kinds of numeric values, like decimals. One attempt at a more reusable `add` function might utilize polymorphic types in its definition to support all parameter types.
+
+```hs
+add :: a -> a -> a
+add x y = x + y
+```
+
+However, this code won't compile because the `+` operator is not defined for all types: the Haskell compiler wouldn't know how to perform `add True False`, for example. Thus, `add` should only support the _class_ of types for which `+` is defined. Indeed, Haskell's _type class_ feature enables overloading operations for different types and categorizing types according to the operations they support.
+
+A `class` declaration describes a new typeclass according to its operations and their type signatures. A simple typeclass is the built-in `Eq` typeclass, which says that a type `a` is an instance of `Eq` if it defines the equality operator `==` with type `a -> a -> Bool`.[^3]
+
+```hs
+class Eq a where
+  (==) :: a -> a -> Bool
+```
+
+For the purpose of extending our `add` function, we're interested in the `Num` typeclass, which generalizes basic numeric operations like `+`.
+
+```hs
+class Num a where
+  (+) :: a -> a -> a
+  (-) :: a -> a -> a
+  (*) :: a -> a -> a
+  negate :: a -> a
+  abs :: a -> a
+  signum :: a -> a
+  fromInteger :: Integer -> a
+```
+
+Now we can use the `Num` typeclass as the _context_ of `a` in the type declaration of `add`, restricting the types `add` supports to those that define addition with the `+` operator.[^3]
+
+```hs
+add :: (Num a) => a -> a -> a
+add a b = a + b
+```
+
+### Defining Types
+
+What if we wanted to define our own kind of numeric type, like a type `Complex` to represent complex numbers? We can introduce a new type with the `data` keyword. Before we define `Complex`, consider the following type declaration for `Bool`.
+
+```hs
+data Bool = True | False
+```
+
+The declaration introduces the type constructor `Bool` along with the values (or _data constructors_) it comprises: `True` and `False`.[^4] Now we can use `Bool` as a type and its values `True` or `False` whenever we expect a `Bool` value.
+
+```hs
+not :: Bool -> Bool
+not True = False
+not False = True
+```
+
+The definition of the `not` function above is an example of _pattern matching_ on the values of a type. Haskell allows us to redefine functions for different input patterns. When a function is applied, the pattern on the left-hand side of its equation (e.g., `True` in `not True = False`) is matched against the argument. If the argument aligns with the pattern, the function evaluates and returns the right-hand side of the equation. Otherwise, the argument is matched against the pattern in the next equation, and the process continues until a pattern is matched or all patterns have been tried, in which case an error occurs.[^5]
+
+```hs
+result :: Bool
+result = not True -- False!
+```
+
+The type constructor and corresponding data constructors for `Bool` are nullary: they take no arguments. However, when considering a new type `Complex`, we might expect its data constructor to take two arguments, the first representing the real part and the second representing the imaginary part. Indeed, data constructors can be parameterized; after all, they are _functions_ that produce results of their corresponding type.[^5] For example, the following data declaration for `Complex` introduces a new type `Complex` and a corresponding data constructor `Comp` that takes two `Float` arguments.
+
+```hs
+data Complex = Comp Float Float
+```
+
+Now, we can define operations on `Complex` values and use the `Comp` constructor whenever we might expect a value of type `Complex`.
+
+```hs
+myComplexNumber :: Complex
+myComplexNumber = Comp 3 4
+
+magnitude :: Complex -> Float
+magnitude (Comp x y) = sqrt (x^2 + y^2)
+
+result :: Float
+result = magnitude myComplexNumber -- 5.0
+```
+
+Like value constructors, the _type constructors_ in a data declaration can be parameterized to produce polymorphic types.[^4] A notable example of a polymorphic type is `Maybe`, which is declared as follows:
+
+```hs
+data Maybe a = Just a | Nothing
+```
+
+The `Maybe` _type constructor_ can be applied to any other type `t` to produce a new type, `Maybe t`.[^4] That new type has two _value constructors_, `Just` and `Nothing`, which we might think of as representing success and failure, respectively.[^5] For example, a function `unlock` could return a `Maybe String` value that contains a message if the provided `key` is correct and `Nothing` otherwise.
+
+```hs
+unlock :: String -> Maybe String
+unlock key = if key == "kitten" then Just "Meow!" else Nothing
+
+test1 = unlock "puppy" -- Nothing
+test2 = unlock "kitten" -- Just "Meow!"
+```
+
+### Declaring Instances
+
+Having defined a new type `Complex` for representing complex numbers, we can now declare it as an instance of the `Num` typeclass. The following _instance_ declaration provides for the `Complex` type an appropriate definition of each operation in the `Num` typeclass, thus declaring that the `Complex` type belongs to `Num`.[^3]
+
+```hs
+instance Num Complex where
+  (Comp x1 y1) + (Comp x2 y2) = Comp (x1 + x2) (y1 + y2)
+  (Comp x1 y1) - (Comp x2 y2) = Comp (x1 - x2) (y1 - y2)
+  (Comp x1 y1) * (Comp x2 y2) = Comp (x1 * x2 - y1 * y2) (x1 * y2 + x2 * y1)
+  negate (Comp x y) = Comp (negate x) (negate y)
+  abs z = Comp (magnitude z) 0
+  signum (Comp 0 0) = 0
+  signum z@(Comp x y) = Comp (x / r) (y / r)
+   where
+    r = magnitude z
+  fromInteger n = Comp (fromInteger n) 0
+```
+
+Now we can use `Complex` values where we expect an instance of `Num`, allowing us to operate on complex numbers with common numeric operations.
+
+```hs
+add :: (Num a) => a -> a -> a
+...
+add (Comp 3 4) (Comp 5 6) -- Comp 8.0 10.0
+```
+
+### Built-in Types
+
+So far, we've considered several functions, types, and typeclasses that are built in to Haskell. These base utilities are provided by the _standard prelude_, which is a library file that all Haskell modules import by default.[^4]
+
+Two built-in parameterized types—types that include type variables—are list (`[]`) and `Maybe`. The list type, denoted `[a]` or `[] a`, represents a sequence of elements of the same type `a`. The `Maybe` type, `Maybe a`, can be thought of as a result that either fails and is `Nothing` or succeeds and contains a value of type `a` within `Just`.[^4]
+
+Another useful parameterized type is `Either a b`, which is defined as follows.
+
+```hs
+data Either a b = Left a | Right b
+```
+
+Similar to the `Maybe` type, `Either` encodes two possibilities; however, unlike `Maybe`, both values of `Either` carry some value. `Either String Int`, for example, represents values that contain a `String` (within `Left`) and values that contain an `Int` (within `Right`).
+
+A unique but central example of a parameterized type is `IO a`. As previously mentioned, the Haskell type system enforces purity by distinguishing effectful operations from pure ones. This boundary is constructed largely by the `IO` type, which represents values whose computation may have entailed producing an input/output side effect.[^2] Consider, for example, the type of `getChar`, which reads a character from `stdin`.
+
+```hs
+getChar :: IO Char
+```
+
+Intuitively, `getChar` produces a `Char` result. However, because it involves the effectful operation of reading from `stdin`, the type of `getChar` is annotated with `IO`. Generally, values with parameterized type are deemed "effectful" because those parameterized types capture some _effect_, like an input/output side effect. Some effects can be safely "escaped," with their internal values being separated from the structure of the parameterized type. The `Maybe` type, for example, can be escaped by pattern matching over its values `Just` and `Nothing`.
+
+```hs
+unwrapMessage :: Maybe String -> String
+unwrapMessage (Just msg) = "Your message is: " ++ msg
+unwrapMessage Nothing = "No messages here!"
+```
+
+The upshot of the `IO` type is that there is no way to safely escape it. Once a value's type is annotated with `IO`, all subsequent operations involving that value must also produce an `IO` result (barring any use of `unsafePerformIO`).[^2] Still, we _can_ operate on `IO` values within the framework of the `Functor`, `Applicative`, and `Monad` typeclasses, which I will introduce now.
+
+### Built-in Typeclasses: Functor, Applicative, and Monad
+
+Parameterized types are ubiquitous in Haskell, as they enable us to qualify existing types and express _structure_ or _effects_. The standard prelude provides us with generic operations for working with parameterized types, which are captured in the `Functor`, `Applicative`, and `Monad` typeclasses.
+
+The `Functor` typeclass declares an operation `fmap` that captures the notion of applying an operation to the elements of a structure while preserving that structure's shape.[^6]
+
+```hs
+class Functor f where
+  fmap :: (a -> b) -> f a -> f b
+```
+
+Per the class declaration, a parameterized type `f` is an instance of `Functor` if it provides the operation `fmap` that applies a function `a -> b` to a value `f a` and produces a new value `f b`.
+
+An example of a `Functor` instance is the type `Maybe`, which defines `fmap :: (a -> b) -> Maybe a -> Maybe b` to apply the provided function `a -> b` to the underlying value of a successful result (`Just a`) or propagate a failure (`Nothing`).[^4]
+
+```hs
+instance Functor Maybe where
+  fmap _ Nothing = Nothing
+  fmap g (Just x) = Just (g x)
+
+fmap increment (Just 1) -- Just 2
+fmap increment Nothing -- Nothing
+```
+
+Similarly, the `Functor` instance `Either` defines `fmap :: (a -> b) -> Either t a -> Either t b` to apply the provided function to the underlying value of a `Right a` result or propagate a `Left t` value.
+
+```hs
+instance Functor (Either t) where
+  fmap _ (Left x) = Left x
+  fmap f (Right y) = Right (f y)
+
+fmap increment (Left 2) -- Left 2
+fmap increment (Right 2) -- Right 3
+```
+
+The infix operator `<$>` is equivalent to `fmap` and is more commonly used.
+
+```hs
+increment <$> (Left 2) -- Left 2
+increment <$> (Right 2) -- Right 3
+```
+
+Notice, `fmap` and `<$>` are restricted to applying functions of single arguments. The `Applicative` typeclass generalizes `Functor` and `fmap` for functions of any number of arguments.
+
+```hs
+class Functor f => Applicative f where
+  pure :: a -> f a
+  (<*>) :: f (a -> b) -> f a -> f b
+```
+
+The syntax `class Functor f => Applicative f` declares that a parameterized type belongs to `Applicative` if it provides the operations of `Applicative`, `pure` and `<*>`, _and_ is an instance of `Functor`.[^3] With currying and the `Applicative` operations, we can sequence computations over parameterized types and combine their results.[^6] For example, we can use the `Applicative` operations to add two `Maybe Int` operands, producing `Nothing` if either operand is `Nothing` or a `Just` value otherwise.
+
+```hs
+pure (+) <*> Just 3 <*> Just 5 -- Just 8
+pure (+) <*> Just 4 <*> Nothing -- Nothing
+```
+
+Similarly, `Applicative` operations on `Either` values will either propagate `Left` values or produce `Right` results. We can also use `fmap` or `<$>` instead of `pure` to apply the initial operation in an applicative sequence.
+
+```hs
+pure (-) <*> Right 3 <*> Right 2 -- Right 1
+pure (-) <*> Left 3 <*> Right 2 -- Left 3
+
+(-) <$> Right 3 <*> Right 2 -- Right 1
+(-) <$> Left 3 <*> Right 2 -- Left 3
+```
+
+The `Functor` and `Applicative` typeclasses generalize the application of functions producing pure results to effectful arguments. However, they do not capture the common pattern of applying a function producing an effectful result to an effectful value; this operation is instead captured by the `>>=` (pronounced "bind") operator provided by the `Monad` typeclass.[^4]
+
+```hs
+class Applicative m => Monad m where
+  return :: a -> m b
+  (>>=) :: m a -> (a -> m b) -> m b
+```
+
+For example, consider a function `safeSqrt :: Float -> Just Float` that returns `Nothing` if the argument is negative and the result of the square root operation otherwise.
+
+```hs
+safeSqrt :: Float -> Maybe Float
+safeSqrt x = if x < 0 then Nothing else Just (sqrt x)
+
+safeSqrt 16 -- Just 4.0
+safeSqrt (-4) -- Nothing
+```
+
+Given that `Maybe` is an instance of `Monad`, we can chain `safeSqrt` operations with the `>>=` operator. This way, the square root operation will be repeatedly applied to valid inputs, and `Nothing` results will be propagated for invalid inputs.
+
+```hs
+safeSqrt 16 >>= safeSqrt -- Just 2.0
+safeSqrt (-4) >>= safeSqrt -- Nothing
+```
+
+Now, to write a function `safeSqrtSum` that uses `safeSqrt` to compute $$\sqrt{x} + \sqrt{y}$$, we could chain several `>>=` operators together with lambda expressions and `return` the `Float` result, producing a final `Maybe Float` value.
+
+```hs
+safeSqrtSum :: Float -> Float -> Maybe Float
+safeSqrtSum x y =
+  safeSqrt x >>= \l ->
+    safeSqrt y >>= \r ->
+      return (l + r)
+
+safeSqrtSum 9 16 -- Just 7.0
+safeSqrtSum 4 -1 -- Nothing
+```
+
+Haskell provides the `do` syntax to express this common pattern of computation more concisely. The following definition of `safeSqrtSum` is equivalent to the previous.
+
+```hs
+safeSqrtSum x y = do
+  l <- safeSqrt x
+  r <- safeSqrt y
+  return (l + r)
+```
+
+As previously mentioned, these typeclasses compose the framework for working with `IO` values. As an instance of `Functor`, `Applicative`, and `Monad`, the `IO` type provides the operators necessary to apply and sequence `IO` operations without escaping the `IO` type.
+
+```hs
+-- Read a character from stdin and capitalize it
+-- Return the result
+getCapitalChar :: IO Char
+getCapitalChar = toUpper <$> getChar
+
+-- Read two characters from stdin and compare them with `==`
+-- Return the result
+compareTwoChars :: IO [Char]
+compareTwoChars = (==) <$> getChar <*> getChar
+
+-- Print a welcome message and prompt the user for input
+-- Return the user input
+promptRPS :: IO String
+promptRPS = do
+  print "Welcome to Rock, Paper, Scissors!"
+  print "Do you choose Rock, Paper, or Scissors?"
+  getLine
+```
+
+### More Useful Monads: Except and Reader
+
+So far, I've introduced several parameterized types, including list (`[]`), `Maybe`, `Either`, and `IO`. All of these types are instances of `Monad` and find use in almost every Haskell program. Some less common, more specialized `Monad` types include `Reader` and `Except`.
+
+The `Reader` monad encapsulates computations that access values held in some fixed, read-only enclosing environment.[^7] [^8] [^9] The `Reader` type constructor is parameterized over two types, `r` and `a`. The first type parameter `r` represents the type of values stored in the environment, and the second parameter `a` represents the type of the `Reader` computation's result. For example, a computation of type `Reader String Int` can access a `String` environment value and will produce an `Int` result. We can construct such a `Reader` using the `reader :: (r -> a) -> Reader r a` function, which produces a `Reader r a` from a function `r -> a`. In this contrived example, the function `length :: String -> Int` can be used with `reader` to produce a `Reader String Int` value.
+
+```hs
+stringReader :: Reader String Int
+stringReader = reader length
+```
+
+Now we can run the `Reader String Int` computation with the `runReader` function, which takes a `Reader` and an initial `String` value for the environment. In this case, the result of the running the computation is the result of applying `length` to the provided `String` environment.
+
+```hs
+runReader stringReader "Hello World"
+-- 11
+```
+
+Typically, the environment will be accessed by a `Reader` computation via the `ask` function.[^9] For example, if a `String` environment represents the user's name, then the following `Reader String String` computation prints a welcome message to the user when run.
+
+```hs
+welcomeMessage :: Reader String String
+welcomeMessage = do
+  name <- ask
+  return ("Welcome back, " <> name <> ".")
+
+runReader welcomeMessage "Parker"
+-- "Welcome back, Parker."
+```
+
+The name `Reader` for these computations comes from the fact that associated environment data is read-only. Although `Reader` computations cannot change their own environments, they can call nested `Reader` computations with modified environments.[^9] The function `local :: (r -> r) -> Reader r a -> Reader r a` takes as argument a function that maps the `Reader` environment, then performs a `Reader` computation with the new environment. For example, we define a new function `welcomeFirstInitial` that modifies the `String` environment to only contain the first letter.
+
+```hs
+welcomeFirstInitial :: Reader String String
+welcomeFirstInitial = local firstLetter welcomeMessage
+ where
+  firstLetter = singleton . head
+
+runReader welcomeFirstInitial "Parker"
+-- "Welcome back, P."
+```
+
+In [hson](/posts/introducing-hson), the `Reader` monad is used in the interpreter to access the program envionment, which is a map that associates variable identifiers with the values they are bound to. The hson interpreter also utilizes the `Except` monad, which adds error handling to its computations. The type `Except e a` represents a computation that either produces a successful result of type `a` or produces an error result of type `e`.[^9] Within an `Except` computation, we can call `throwError :: e -> Except e a` to signal an error. In the following code snippet, we create a new `safeSqrt2` function that produces a result of type `Except String Float`.
+
+```hs
+-- Original `safeSqrt` with Maybe result
+safeSqrt :: Float -> Maybe Float
+safeSqrt x = if x < 0 then Nothing else Just (sqrt x)
+
+-- New `safeSqrt` with Except String result
+safeSqrt2 :: Float -> Except String Float
+safeSqrt2 x = if x < 0 then throwError "Received negative input!" else return (sqrt x)
+```
+
+The benefit of using an `Except String` result over a `Maybe` result is that we can use `throwError` within `Except` to provide contextual information about a failure. Now, when we run the `Except String Float` computation with `runExcept`, we receive an `Either String Float` result that represents a successful computation in `Right Float` or an error message in `Left String`.
+
+```hs
+runSafeSqrt2 x = runExcept (safeSqrt2 x)
+
+runSafeSqrt2 4 -- Right 2.0
+runSafeSqrt2 16 -- Right 4.0
+runSafeSqrt2 (-1) -- Left "Received negative input!"
+```
+
+### Monad Transformers and Composing Monads
+
+While the features of the `Reader` and `Except` monads are useful alone, they become remarkably powerful when joined in _composition_. The _monad transformer_ framework allows us to compose monads and combine their features into a single custom monad.[^8] [^9] By inspecting the definitions of `Reader` and `Except`, we find that they are aliases for specific instances of the `ReaderT` and `ExceptT` monad _transformers_ that compose the `Identity` monad.
+
+```hs
+type Reader r a = ReaderT r Identity a
+type Except e a = ExceptT e Identity a
+```
+
+The `Identity` monad is trivial: it provides no features and represents "no effect".[^8] [^9] So, the `Reader` and `Except` monads are special cases of the `ReaderT` and `ExceptT` monad transformers, where the nested monad in composition is `Identity`.
+
+We can compose `ReaderT` and `ExceptT` to produce a new custom monad, `Eval`, that provides _both_ access to a read-only environment and error handling.
+
+```hs
+type Eval a = ReaderT String (ExceptT String Identity) a
+```
+
+The outermost `ReaderT` monad has `ExceptT` as its base, and the `ExceptT` monad has `Identity` as its base. Now, when we run an `Eval` computation, we use `runReaderT`, `runExceptT`, and `runIdentity` to unwrap all the monad transformers and obtain our final `Either String a` result.
+
+```hs
+runEval :: Eval a -> Either String a
+runEval x = runIdentity $ runExceptT $ runReaderT x "Initial Environment"
+```
+
+Monad transformers also allow us to integrate effectful computations by changing the innermost `Identity` monad to `IO`. Now, when we apply `runReaderT` and `runExceptT`, we obtain an `IO (Either String a)` result.
+
+```hs
+type Eval a = ReaderT String (ExceptT String IO) a
+
+runEval :: Eval a -> IO (Either String a)
+runEval x = runExceptT $ runReaderT x "Initial Environment"
+```
+
+The [hson](/posts/introducing-hson) interpreter utilizes the `ReaderT`, `ExceptT`, and `IO` monad transformers in this way to integrate read-only environment access, error handling, and I/O effects.
+
+[^1]: See [How Functional Programming Mattered](https://academic.oup.com/nsr/article/2/3/349/1427872)
+[^2]: See [A History of Haskell](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/07/history.pdf)
+[^3]: See [Type Classes in Haskell](https://dl.acm.org/doi/10.1145/227699.227700)
+[^4]: See _Programming in Haskell: Second Edition_ by Graham Hutton
+[^5]: See [A Gentle Introduction to Haskell](https://cpsc.yale.edu/sites/default/files/files/tr901.pdf)
+[^6]: See [Constructing Applicative Functors](https://openaccess.city.ac.uk/id/eprint/1141/1/)
+[^7]: See [Composing Monads](https://web.cecs.pdx.edu/~mpj/pubs/RR-1004.pdf)
+[^8]: See [Functional Programming with Overloading and Higher-Order Polymorphism](https://web.cecs.pdx.edu/~mpj/pubs/springschool95.pdf)
+[^9]: See [Monad Transformers Step by Step](https://blogs.asarkar.com/assets/docs/haskell/Monad%20Transformers%20Step%20by%20Step%20-%20Grabmuller.pdf)
+

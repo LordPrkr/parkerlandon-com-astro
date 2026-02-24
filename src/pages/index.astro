@@ -1,0 +1,43 @@
+---
+import MdxLayout from "@/layouts/MdxLayout.astro";
+import BodyText from "@/components/typography/body-text";
+import AnchorText from "@/components/typography/anchor-text";
+
+const meta = {
+  title: "Welcome \u{1F44B}",
+  url: "https://parkerlandon.com",
+};
+---
+
+<MdxLayout meta={meta}>
+  <BodyText>
+    Hey, I'm Parker. Welcome to my Digital Domain! I recently graduated from
+    Seattle Pacific University where I studied Computer Science, Applied Math,
+    and Data Analytics. Now, I'm working as a Fullstack Software Engineer at
+    Smartsheet, primarily building frontend features but also <a href="https://alexkondov.com/the-t-shaped-engineer/" target="_blank"><AnchorText>T-shaped</AnchorText></a> across
+    our backend and infrastructure. I'm always working on <a href="/portfolio"><AnchorText>personal projects</AnchorText></a>,
+    too.
+  </BodyText>
+
+  <BodyText>
+    The term <em>Digital Domain</em> stems primarily from the phrase <a href="https://joelhooks.com/digital-garden" target="_blank"><AnchorText>"digital garden."</AnchorText></a> This
+    site serves as <em>my</em> digital garden, though I've personalized the
+    concept to suit an old nickname of mine. In high school, many of my friends
+    called me <strong>"Lord Parker"</strong>. Thus, as one might tend to their
+    garden, I tend to my territory... my <em>domain</em>.
+  </BodyText>
+
+  <BodyText>
+    The connotation of <em>Digital Domain</em> captures the nature of my
+    relationship to this site, too. As the benevolent lord of this land, I aim
+    to write freely and abundantly here. Everything you see is a product of my
+    own pursuits and passions. I rule the content of this site and command its
+    trajectory.
+  </BodyText>
+
+  <BodyText>
+    If you are interested in my journey, connect with me on my social media via
+    the footer links below! Otherwise, check out all of my posts <a href="/posts"><AnchorText>here</AnchorText></a> or
+    my portfolio <a href="/portfolio"><AnchorText>here</AnchorText></a>.
+  </BodyText>
+</MdxLayout>

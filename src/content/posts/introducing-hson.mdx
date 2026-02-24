@@ -1,0 +1,1275 @@
+---
+title: Introducing hson, a JSON processing language
+keywords: haskell
+description: hson is a CLI that, when given JSON data and an hson script, processes the JSON data according to the script. I demonstrate the features of hson and illustrate how it was implemented using Haskell.
+url: https://parkerlandon.com/posts/introducing-hson
+ogImageUrl: https://adoring-jackson-1187ff.netlify.app/.netlify/functions/gen-opengraph-image?title=Introducing%20hson,%20a%20JSON%20processing%20language&tags=hson,haskell
+postnum: 6
+---
+
+> **Note:** I produced this article as part of a series of Haskell pieces I wrote while developing my senior thesis. That thesis is available now and contains a more polished version of this article. See [A Survey of Practical Haskell: Parsing, Interpreting, and Testing](https://digitalcommons.spu.edu/cgi/viewcontent.cgi?article=1224&context=honorsprojects&z=1717695924).
+
+To demonstrate the many practical utilities afforded by Haskell and strongly-typed pure functional programming, I've used Haskell to implement a scripting language and CLI called _hson_. The hson language is a domain-specific language for processing JSON data. Its parser and interpreter are included in the hson CLI, which, given an hson script and input JSON, processes the JSON according the the hson script. For example, consider the following JSON data representing a list of restaurant data.
+
+```json
+[
+  {
+    "name": "Parker's Bar and Grill",
+    "city": "Seattle",
+    "state": "Washington",
+    "rating": 4,
+    "price": 1
+  },
+  {
+    "name": "Smashing Sushi",
+    "city": "Portland",
+    "state": "Oregon",
+    "rating": 5,
+    "price": 3
+  },
+  {
+    "name": "Barely Barbecue",
+    "city": "Seattle",
+    "state": "Washington",
+    "rating": 1,
+    "price": 2
+  }
+]
+```
+
+We can write an hson script to retrieve the names of all Seattle restaurants as follows.
+
+```js
+$.filter(|restaurant| =>
+  restaurant.city == "Seattle"
+).map(|restaurant| =>
+  restaurant.name
+)
+```
+
+When we run the hson CLI with the provided JSON data and hson script, the JSON data is parsed and bound to the `$` identifer in the hson script. The hson script then _filters_ that data for restaurants whose `city` is Seattle and _maps_ each restaurant object to its `name`.
+
+If we've written the hson script in a file **script.hson** and stored the JSON data in a file **restaurants.json**, we can run the hson program from the command line with the following options for the desired results.
+
+```txt
+$ hson --hf script.hson --jf restaurants.json
+[Parker's Pasta, Barely Barbecue]
+```
+
+Emphasizing readability and familiarity, I designed the hson syntax to be similar to that of JavaScript. Operations like `filter` and `map` can be chained like methods, and properties of objects are accessed with the dot symbol (`.`). The construct `|restaurant| => restaurant.name` is an anonymous function that takes a `restaurant` object as its argument and returns the object's `name` property. Functions in hson are first class, so they can be passed as arguments to other higher-order functions like `filter` and `map`.
+
+The above hson script can be modified to format its results as a JSON string with the `toJSON` function. The pipe operator `|>` can also be employed instead of the dot symbol to compose functions, and each `restaurant` object can be mapped to a new object with a single `name` property.
+
+```js
+$ |> filter(|restaurant| => restaurant.city == "Seattle")
+  |> map(|restaurant| => {name: restaurant.name})
+  |> toJSON(2)
+```
+
+The pipe operator passes its left-hand side as the first argument to the function call on its right-hand side. The argument of `2` in `toJSON()` specifies an indentation of 2 in the output string. Reunning hson with the newly modified script produces the following output.
+
+```txt
+$ hson --hf script.hson --jf restaurants.json
+[
+  {
+    "name": "Parker's Pasta"
+  },
+  {
+    "name": "Barely Barbecue"
+  }
+]
+```
+
+Variables in hson are declared with the let keyword. For example, in the following script, a function `filterSeattleRestaurants` is declared that applies the `filter` and `map` operations from above. Applying that function to the parsed JSON data (bound to `$)` produces the same output as before.
+
+```js
+let filterSeattleRestaurants = |restaurants| =>
+  restaurants
+    |> filter(|restaurant| => restaurant.city == "Seattle")
+    |> map(|restaurant| => restaurant.name);
+filterSeattleRestaurants($)
+```
+
+The hson language supports all JSON data types—arrays, objects, strings, numbers, booleans, and `null`—as well as functions. The semantics of these data types and the syntax of operations on their values are nearly identical to those of JavaScript. For example, arrays are indexed with the standard square bracket notation and, as previously demonstrated, object properties are accessed with the dot symbol. The following snippet accesses the `restaurant` object at index `1` in the input JSON and prints out its `name` property.
+
+```js
+let restaurant = $[1];
+restaurant.name
+```
+
+```txt
+$ hson --hf script.hson --jf restaurants.json
+Smashing Sushi
+```
+
+Like JavaScript, hson also provides array and object _destructuring_ for accessing array indices and object properties. The following script produces the same result as above ("Smashing Sushi") but instead utilizes destructuring for index and property access.
+
+```js
+let [_, restaurant] = $;
+let { name } = restaurant;
+name
+```
+
+As a more sophisticated example, consider the following JSON representation of a Turing Machine, where the `start`, `accept`, and `reject` fields define the start, stop, and reject states respectively, and the `delta` field contains information about each state transition.
+
+```json
+{
+  "start": "1",
+  "accept": "accept",
+  "reject": "reject",
+  "delta": [
+    {
+      "from": "1",
+      "to": [
+        {
+          "result": ["reject", "_", "R"],
+          "on": "_"
+        },
+        {
+          "result": ["reject", "x", "R"],
+          "on": "x"
+        },
+        {
+          "result": ["2", "_", "R"],
+          "on": "0"
+        }
+      ]
+    },
+    {
+      "from": "2",
+      "to": [
+        ...
+      ]
+    },
+    ...
+  ]
+}
+```
+
+The following hson script counts the number of transitions that result in the reject state.
+
+```js
+$.delta.reduce(|accumulator, transitions| =>
+  transitions.to.some(|transition| =>
+    transition.result[0] == $.reject) ? accumulator + 1 : accumulator
+  , 0)
+```
+
+The `reduce` function is inspired by Haskell's `foldr` operation and is nearly identical to the `reduce` array method from JavaScript. Its responsibility in the script above is to keep track of the transition count. The `some` function also has a near-identical analog in JavaScript: it returns true if any element in the provided array satisfies its predicate function. In the script above, `some` returns true if any transition from a given state is the reject state. Finally, the ternary operator `?` conditionally returns the `accumulator` value incremented by one if the transition result is the reject state.
+
+The logic of conditionally tallying list elements can be abstracted to a higher-order function `countWhere`, which will again utilize the `reduce` operation and the ternary operator to count the elements that satisfy a given predicate function.
+
+```js
+let countWhere = |list, predicate| =>
+  list.reduce(|accumulator, element| =>
+    predicate(element) ? accumulator + 1 : accumulator
+  , 0);
+```
+
+The original counting script can now be rewritten to employ `countWhere`, with the provided predicate being the `some` function from before.
+
+```js
+$.delta |>
+  countWhere(|delta| =>
+    delta.to.some(|transition| =>
+      transition.result[0] == $.reject
+    )
+  )
+```
+
+At a high level, an hson script is a sequence of zero or more variable declarations followed by a single expression. The output of a script is the result of the evaluated final expression. Variables in hson are immutable: they cannot be reassigned after their declaration, and their values cannot change. Values in hson are computed solely from compositions of functions, so hson is itself a functional language.
+
+The hson program is responsible for
+
+- reading the hson, JSON, and command line options
+- parsing command-line options
+- parsing the input hson script
+- parsing the input JSON, converting each value to an hson value and binding the root value to `$`
+- interpreting the input script
+- reporting any syntax or runtime errors that occur
+
+The hson codebase also employs _property-based testing_, which helps ensure the correctness of the hson parser by running it on thousands of randomly-generated input programs.[^1] [^2]
+
+In the following sections, I walk through the implementation details of hson with regard to parsing, interpreting, and testing, revealing how the Haskell codebase fulfills each of hson's responsibilities. In turn, I aim to demonstrate how hson's development has benefitted from utilizing Haskell and strongly-typed pure functional programming.
+
+### Parsing
+
+Examining the `main` function of hson, we find that it first reads and parses the command-line options, then reads the input hson script and JSON data, then calls `run`.
+
+```hs
+main :: IO ()
+main = do
+  opts <- hsonOpts
+  hsonIn <- readHSON $ hsonInputOpt opts
+  jsonIn <- readJSON $ jsonInputOpt opts
+  run jsonIn hsonIn opts
+```
+
+The `run` function runs the hson parser on the input hson script. Then, if the hson parse was successful, `run` calls `runProg`, which parses the input JSON if it was given and evaluates the hson script, eventually printing its result.
+
+```hs
+runProg :: Maybe BL.ByteString -> Program -> IO ()
+runProg Nothing prog = runInterpretNoJSON prog >>= printResult
+runProg (Just json) prog = case decode json of
+  Left err -> print . JSONParsingError $ T.pack err
+  Right json -> runInterpretWithJSON json prog >>= printResult
+```
+
+The following sections highlight the techniques used to implement hson's three separate parse responsibilities: command-line options, hson script, and JSON data.
+
+#### The hson Parser
+
+As mentioned, an hson program comprises a series of zero or more variable declarations followed by a single expression, as illustrated by the following type definition.
+
+```hs
+type Program = ([VarStmt], Expr)
+```
+
+The hson parser is responsible for parsing an input according to the grammar rules and constructing the appropriate `Program` value, which represents the root of the hson parse tree.
+
+A `VarStmt` represents some variable declared with either a standalone identifier, a destructured array, or a destructured object.
+
+```hs
+data VarStmt
+  = VarDeclStmt VarDecl
+  | ObjectDestructureDeclStmt ObjectDestructureDecl
+  | ArrayDestructureDeclStmt ArrayDestructureDecl
+```
+
+The following code snippet illustrates each kind of variable declaration.
+
+```js
+let restaurants = $; // identifier
+let [_, secondRestaurant] = restaurants; // destructured array
+let { name } = secondRestaurant; // destructured object
+...
+```
+
+An `Expr` represents any expression node in the hson parse tree.
+
+```hs
+data Expr
+  = ArrayInitializerExpr ArrayInitializer
+  | ArrowFunctionExpr ArrowFunction
+  | BinaryExpr Binary
+  | CallExpr Call
+  | ConditionalExpr Conditional
+  | DollarExpr Dollar
+  | GetExpr Get
+  | GroupingExpr Grouping
+  | IndexExpr Index
+  | LiteralExpr Literal
+  | LogicalExpr Logical
+  | ObjectInitializerExpr ObjectInitializer
+  | UnaryExpr Unary
+  | VariableExpr Variable
+  deriving (Show, Eq)
+```
+
+The simple program `1+2`, for example, produces a `Program` value with an empty `VarStmt` list and a `BinaryExpr` as the root of the `Expr` tree.
+
+```hs
+( []
+, BinaryExpr
+  ( Binary
+      { binLeft =
+          LiteralExpr
+            ( Literal
+                { litTok =
+                    Token{tokenType = TokenNumber, literal = Just 1, pos = (line 1, column 1)}
+                }
+            )
+      , binOp =
+          Token{tokenType = TokenPlus, literal = Nothing, pos = (line 1, column 3)}
+      , binRight =
+          LiteralExpr
+            ( Literal
+                { litTok =
+                    Token{tokenType = TokenNumber, literal = Just 2, pos = (line 1, column 5)}
+                }
+            )
+      }
+  )
+)
+```
+
+The `program` function within hson's parser corresponds to the start rule of the hson grammar and is the entry point for the recursive descent parser.
+
+```hs
+program :: HSONParser Program
+program = do
+  declarations <- many declaration
+  expr <- expression
+  eof
+  return (declarations, expr)
+```
+
+The definition of `program` is expressive enough that even a Haskell novice could intuit the semantics of each line
+
+1. Parse many (variable) declarations
+2. Parse an expression
+3. Expect the end of the input
+4. Return the `Program` parse result
+
+Each function called within the `do` block of `program`—`many`, `declaration`, `expression`, and `eof`—are themselves functions which return a parse result. The `declaration` function, for example, parses variable declarations like
+
+```ts
+let sum = 1 + 2;
+```
+
+and returns a `VarStmt` parse result.
+
+```hs
+declaration :: HSONParser VarStmt
+```
+
+This ability to sequence parse operations within the `do` block is afforded by the monadic `HSONParser` type, which wraps the result of every parse operation. Inspecting the definition of `HSONParser`, we find that it is an alias for the `ParsecT` type.
+
+```hs
+type HSONParser = ParsecT Text () Identity
+```
+
+The `ParsecT` type is a monad transformer provided by the [Parsec](https://hackage.haskell.org/package/parsec-3.1.17.0/docs/Text-Parsec.html) library. Parsec provides this type, which defines sequencing, failure, and error handling operations for parse results, alongside several primitive _parser combinators_, which are parse operations like `many` that can be sequenced and composed to produce more complex parsers.[^3] A `ParsecT` result has 4 type parameters, `s u m a`, where `s` is the type of the input, `u` is the the type of some user state, `m` is an underlying monad, and `a` is the type of the parse result. Thus, the `HSONParser` type is simply a `ParsecT` computation with no user state, `Identity` as the base monad ("no effect"), and an input of type `Text`, which is a time and space-efficient Unicode character string representation.[^13]
+
+To run a parse computation, we call it with `runParsecT`, providing the input string, the initial user state, and an optional source name argument (e.g., the input file name). The hson parser begins its descent at the `program` function, has no user state, and specifies no source name.
+
+```hs
+runHSONParser :: T.Text -> Either ParseError Program
+runHSONParser s = runHSONParser' s program
+
+runHSONParser' :: T.Text -> HSONParser a -> Either ParseError a
+runHSONParser' s p = runIdentity $ runParserT p () "" s
+```
+
+The result of an `HSONParser Program` computation is `Either ParseError Program`, which captures the possibility of failure while parsing `program`.
+
+The first step of parsing an hson script is parsing a sequence of zero or more variable declarations. The `declaration` function handles each kind of variable declaration and produces `VarStmt` result. The `parseVarDecl`, `parseObjDestDecl`, and `parseArrDestDecl` handle parsing identifiers, destructured objects, and destructured arrays, respectively.
+
+```hs
+declaration :: HSONParser VarStmt
+declaration = do
+  letVar
+  stmt <-
+    try parseVarDecl
+      <|> try parseObjDestDecl
+      <|> try parseArrDestDecl
+      <?> "identifier, destructured object, or destructured array"
+  equal
+  initializer <- expression
+  semicolon
+  return $ stmt initializer
+```
+
+The `(<|>)` operator is called the "choice combinator". If the parse result on the left-hand side of `<|>` is successful, it returns that parse result; otherwise, it returns the parse result on its right hand side. We combine the choice operator with the `try` combinator to implement arbitrary lookahead. Without the application of `try`, a parser will consume input even when it fails. The `try p` parser performs the parse operation `p` but pretends to not have consumed any input when it fails.[^3] Thus, combining `try` with choice produces parsers that attempt to parse several alternative productions before failing.
+
+The `<?>` operator is used to apply a high-level label to a parser so that, when it fails without consuming input, the associated error message includes that label.[^3] For example, consider an incorrect hson program that uses pipe characters (`||`) instead of square brackets (`[]`).
+
+```js
+let |_, secondRestaurant| = restaurants;
+secondRestaurant
+```
+
+When run, hson gives the following error (which is produced by Parsec).
+
+```txt
+(line 1, column 5):
+unexpected "|"
+expecting identifier, destructured object, or destructured array
+```
+
+Without the above use of `<?>`, the failed `declaration` parser produces a character-level error message instead.
+
+```txt
+unexpected "|"
+expecting identifier, "{" or "["
+```
+
+In the definition of `declaration`, the result of `parseVarDecl`, `parseObjDestDecl`, or `parseArrDestDecl` (whichever succeeds) is bound to `stmt`.
+
+```hs
+stmt <-
+  try parseVarDecl
+    <|> try parseObjDestDecl
+    <|> try parseArrDestDecl
+    <?> "identifier, destructured object, or destructured array"
+```
+
+Each of the three parse functions returns the same result: `HSONParser (Expr -> VarStmt)`. Thus, within the `do` block, `stmt` has type `Expr -> VarStmt` and is a _function_ that maps an expression to a variable statement. When `declaration` returns, the `stmt` function is finally applied to the parsed initializer expression, producing the resulting `VarStmt`.
+
+```hs
+initializer <- expression
+semicolon
+return $ stmt initializer
+```
+
+This pattern of returning functions as parse results solves situations where a data type like `VarStmt` is the target parse result but a necessary value (e.g., an `Expr` value) is parsed _later_. In this case, the intializer expression necessary to produce a `VarStmt` is parsed after the identifier or destructured object/array, so `parseVarDecl`, `parseObjDestDecl`, and `parseArrDestDecl` each produce a function that takes an eventual `Expr` to produce a `VarStmt`. The `parseVarDecl` function, for example, is simply responsible for parsing an identifier, but returns a function that will eventually produce a `VarStmt`.
+
+```hs
+parseVarDecl :: HSONParser (Expr -> VarStmt)
+parseVarDecl = do
+  declName <- identifier
+  return $
+    \expr -> VarDeclStmt VarDecl{declName = declName, initializer = expr}
+```
+
+In an imperative language, one might return a partially-constructed `VarStmt` from a function like `parseVarDecl` and utilize mutability or reassignment to eventually supply it with the initializer expression. However, if the caller fails to eventually provide that initializer expression, a `VarStmt` could float around the program with missing data and produce undesired outcomes. Thus, while the immutability restrictions and strong type system of Haskell demand thoughtful solutions, they help mitigate uncertainty by eliminating the possibility of partially-constructed and ever-changing values.
+
+For each production in the hson grammar, the hson parser has an associated function that utilizes parser combinators and techniques like those found in the definition of `declaration`. Moving back up to the `program` function, we find that it calls `declaration` with the `many` parser, which applies the `declaration` parser zero or more times and returns a list of parse results.[^15]
+
+```hs
+program :: HSONParser Program
+program = do
+  declarations <- many declaration
+  expr <- expression
+  eof
+  return (declarations, expr)
+```
+
+Next, `program` calls `expression`, which is responsible for producing the root `Expr` node that will be evaluated and output by hson. The `expression` function descends through orders of precedence, eventually parsing logical expressions like the null-coalescing operator `??`, the logical "or" operator `||`, and the logical "and" operator `&&`.
+
+```hs
+nullCoalesce :: HSONParser Expr
+nullCoalesce = do
+  chainl1 logicOr parseNullCoalesce
+ where
+  parseNullCoalesce = parseLogicalOp questionQuestion
+
+logicOr :: HSONParser Expr
+logicOr = do
+  chainl1 logicAnd parseOr
+ where
+  parseOr = parseLogicalOp orOr
+
+logicAnd :: HSONParser Expr
+logicAnd = do
+  chainl1 equality parseAnd
+ where
+  parseAnd = parseLogicalOp andAnd
+```
+
+The `chainl1` combinator is common to each of these logical expression parsers; its responsibility is to parse left-associative binary operations. Specifically, `chainl1` one or more occurrences of a particular expression, each separated by an operator. The first argument to `chainl1` is an expression parser, `HSONParser Expr`, and the second argument is an operator parser with type `HSONParser (Expr -> Expr -> Expr)`. The operator parser is responsible for parsing an operator token (e.g., the "logical and" operator `&&`) and returning a function that produces a higher-level expression from left-hand and right-hand side expressions. The final result of `chainl1` is the result of left-associative application of each function returned by the operator parser to each operand expression parse result. Effectively, `chainl1` encodes left-associativity while eliminating left-recursion.[^3] [^15] It is also utilized by each left-associative binary expression parser.
+
+```hs
+equality :: HSONParser Expr
+equality = do
+  chainl1 comparison (try parseNeq <|> parseEq)
+ where
+  parseEq = parseBinaryOp equalEqual
+  parseNeq = parseBinaryOp bangEqual
+
+comparison :: HSONParser Expr
+comparison = do
+  chainl1 term (try parseGte <|> try parseGt <|> try parseLte <|> parseLt)
+ where
+  parseGt = parseBinaryOp greater
+  parseGte = parseBinaryOp greaterEqual
+  parseLt = parseBinaryOp less
+  parseLte = parseBinaryOp lessEqual
+
+term :: HSONParser Expr
+term = do
+  chainl1 factor (try parsePlus <|> parseMinus)
+ where
+  parseMinus = parseBinaryOp minus
+  parsePlus = parseBinaryOp plus
+
+factor :: HSONParser Expr
+factor = do
+  chainl1 unary (try parseDiv <|> parseMult)
+ where
+  parseMult = parseBinaryOp star
+  parseDiv = parseBinaryOp slash
+```
+
+In general, the hson parser is the `program` parser, which itself is a composition of sequences of more specific parsers, each of which comprise several more fundamental parsers, with the most fundamental parsers being provided by Parsec. Eventually, the recursive descent parses the terminals in the hson language grammar. The array initializer expression parser, for example, is simply the `brackets` parser applied to the `arguments` parser, thus parsing a comma-separated list of expressions between a pair of square brackets `[]`. The parser also records its position and the relevant token for producing friendly error messages within the hson interpreter.
+
+```hs
+parseArray :: HSONParser Expr
+parseArray = do
+  bracketPos <- getPosition
+  elems <- brackets arguments
+  return $
+    ArrayInitializerExpr
+      ArrayInitializer
+        { bracket =
+            Token{tokenType = TokenLeftBracket, literal = Nothing, pos = bracketPos}
+        , elements = elems
+        }
+```
+
+Parser combinators are a powerful tool for implementing parsers. From a relatively small collection of combinators (like that which Parsec provides), one can quickly encode an entire language grammar through composition and sequencing. Moreover, the declarative style of parser combinators results in parser code that _looks_ like the associated grammar, with each function corresponding to a variable and each definition corresponding to the associated production. Additionally, utilizing parser combinators gives the parser access to Haskell's many features and allows its parse results to be easily integrated with the rest of the Haskell program.
+
+#### JSON Parsing
+
+The hson program also takes JSON data as an optional input and makes it available via the `$` identifier. However, before hson can bind the JSON data to `$`, it must first convert it into the appropriate hson value.
+
+The following `HSONValue` data type represents all values within an HSON program
+
+```hs
+data HSONValue
+  = Function Func
+  | Method (HSONValue -> Func)
+  | Closure Func Environment
+  | Array (V.Vector HSONValue)
+  | Object (Map.Map T.Text HSONValue)
+  | String T.Text
+  | Number Scientific
+  | Bool Bool
+  | Null
+```
+
+The goal of the JSON parser within hson is to construct the appropriate `HSONValue` for each node in the JSON parse tree. The popular Haskell library `aeson` makes this JSON parsing task simple: it provides a typeclass `FromJSON` with an associated `parseJSON` operation.[^16]
+
+```hs
+class FromJSON a where
+  parseJSON :: Value -> Parser a
+```
+
+The `Value` type represents a JSON value as a Haskell value.
+
+```hs
+data Value
+  = Object !Object
+  | Array !Array
+  | String !Text
+  | Number !Scientific
+  | Bool !Bool
+  | Null
+```
+
+Then, to construct a particular data type from JSON, we declare that data type to be an instance of `FromJSON` and provide the appropriate definition of `parseJSON`. In the case of `HSONValue`, the `parseJSON :: Value -> HSONValue` function maps JSON arrays to HSON arrays, JSON objects to HSON objects, etc.
+
+```hs
+-- `A` is the `aeson` namespace, `H` is the `hson` namespace
+instance A.FromJSON H.HSONValue where
+  parseJSON (A.Array v) = H.Array <$> mapM parseJSON v
+  parseJSON (A.Object v) = H.Object <$> mapM parseJSON (A.toMapText v)
+  parseJSON (A.String v) = return $ H.String v
+  parseJSON (A.Number v) = return $ H.Number v
+  parseJSON (A.Bool v) = return $ H.Bool v
+  parseJSON A.Null = return H.Null
+```
+
+Now, we can decode the JSON with `eitherDecode`, which produces an `Either String HSONValue` value where the `Right` result contains the parsed JSON and the `Left` result contains an error message. If the JSON parse was successful, hson runs the interpreter with the parsed hson script and JSON data. Otherwise, hson prints the JSON parsing error.
+
+```hs
+runProg (Just json) prog = case eitherDecode json of
+  Left err -> print . JSONParsingError $ T.pack err
+  Right parsedJSON -> runInterpretWithJSON parsedJSON prog >>= printResult
+```
+
+#### Applicative Command Line Option Parsing
+
+The hson CLI accepts a few options that must also be parsed and handled. Invoking `hson` with the `--help` flag gives the following output that lists each available option.
+
+```txt
+hson - json processing language
+
+Usage: hson ((--hf|--hfile|--hsonfile FILENAME.HSON) | SCRIPT)
+            [(--jf|--jfile|--jsonfile FILENAME.JSON) | (-n|--no-json)]
+            [-a|--ast] [-p|--pretty-print] [-o|--omit-eval]
+
+  Parse JSON according to given hson input.
+
+Available options:
+  --hf,--hfile,--hsonfile FILENAME.HSON
+                           hson input file.
+  SCRIPT                   hson script to be run.
+  --jf,--jfile,--jsonfile FILENAME.JSON
+                           JSON input file.
+  -n,--no-json             Run hson without a JSON input.
+  -a,--ast                 Print the hson parse tree.
+  -p,--pretty-print        Pretty print the provided hson script.
+  -o,--omit-eval           Omit the evaluated expression output.
+  -h,--help                Show this help text
+```
+
+To summarize,
+
+- The input hson script can be provided from the command line or from a file with the `-hf` flag.
+- By default, hson reads JSON from `stdin`. The JSON data can instead be read from a file with the `-jf` flag, or hson can be run without JSON with the `-n` flag.
+- The other flags are used for debugging purposes.
+  - The `-a` flag prints the parse tree generated from the provided hson script.
+  - The `-p` flag pretty-prints the provided hson script.
+  - The `-o` flag prevents hson from printing the evaluated expression.
+
+The parsing of these command-line options, alongside the printing and formatting of the above help message, is facilitated by the [optparse-applicative](https://hackage.haskell.org/package/optparse-applicative) library. Like `parsec`, `optparse-applicative` provides several combinators that can be sequenced and composed to create new parsers. However, the combinators that `optparse-applicative` provides are specific to parsing command-line options. Moreover, as the name implies, the combinators are applicative, not monadic, so they are sequenced with the `fmap` (`<$>`) and applicative sequencing (`<*>`) operators instead of with the bind (`>>=`) operator or within a `do` block.
+
+Implementing command-line options begins with defining a data type with a field corresponding to the value of each option.
+
+```hs
+data Options = Options
+  { hsonInputOpt :: HSONInput
+  , jsonInputOpt :: JSONInput
+  , doPrintAst :: Bool
+  , doPrettyPrint :: Bool
+  , doOmitEval :: Bool
+  }
+
+data HSONInput
+  = HSONFileInput FilePath
+  | CmdLineIn String
+
+data JSONInput
+  = JSONFileInput FilePath
+  | StdIn
+  | NoJSONInput
+```
+
+The `hsonInputOpt` field determines whether the hson script is provided from the command-line (`CmdLineIn`) or from within a file (`HSONFileInput`). The `jsonInputOpt` field determines whether JSON is to be read from `stdin` (`StdIn`) or a file (`JSONFileInput`) or not at all (`NoJSONInput`). The other fields correspond to the debugging flags and are simply `True` or `False`.
+
+Next, for each value of each option, a `Parser` is created. Each parser defines the flags that invoke the option (`long` or `short`), the placeholder text for the option's argument (`metavar`), and the `help` text. For example, the following snippet defines the two parsers `hsonFileInput` and `cmdLineIn` that correspond to the `HSONFileInput` and `CmdLineIn` values, respectively.
+
+```hs
+hsonFileInput :: Parser HSONInput
+hsonFileInput =
+  HSONFileInput
+    <$> strOption
+      ( long "hf"
+          <> long "hfile"
+          <> long "hsonfile"
+          <> metavar "FILENAME.HSON"
+          <> help "hson input file."
+      )
+
+cmdLineIn :: Parser HSONInput
+cmdLineIn =
+  CmdLineIn
+    <$> argument str (metavar "SCRIPT" <> help "hson script to be run.")
+```
+
+Once a parser is implemented for each option value, a single `Options` parser can be created that comprises a sequence of all other parsers and handles all possible options. Within this aggregate parser, the choice operator `<|>` is used to signal mutually exclusive options. For example, hson is _either_ provided by file or via the command line, so the choice operator is used to sequence and distinguish the `hsonFileInput` and `cmdLineIn` parsers.
+
+```hs
+opts :: Parser Options
+opts =
+  Options
+    <$> (hsonFileInput <|> cmdLineIn)
+    <*> (jsonFileInput <|> stdin)
+    <*> printParseTree
+    <*> prettyPrint
+    <*> hideEval
+```
+
+The definition of `opts` alone clearly expresses the possible command-line options for hson and can easily be extended by modifying the `Options` data type and defining and sequencing different options parsers with `<*>` and `<|>`.
+
+When hson runs, it first calls `execParser` to parse the command-line options, passing in `info` to specify the information displayed in hson's help text.
+
+```hs
+runHsonOpts :: IO Options
+runHsonOpts =
+  execParser $
+    info
+      (opts <**> helper)
+      ( fullDesc
+          <> progDesc "Parse JSON according to given hson input."
+          <> header "hson - json processing language"
+      )
+
+-- Main.hs
+main :: IO ()
+main = do
+  opts <- runHsonOpts -- the first function called!
+  hsonIn <- readHSON $ hsonInputOpt opts -- read hson according to the `hsonInputOpt` option
+  jsonIn <- readJSON $ jsonInputOpt opts -- read JSON according to the `jsonInputOpt` option
+  run jsonIn hsonIn opts
+```
+
+Once hson parses the command-line options, it reads the provided hson and JSON according to the values of those options. Then, `main` calls `run`, which utilizes `when` and `unless` to conditionally execute functions depending on the values of each debug option.
+
+```hs
+run json hson opts = case runHSONParser hson of
+  Left err -> TIO.putStrLn $ T.pack $ show err
+  Right prog -> do
+    when (doPrintAst opts) (TIO.putStrLn $ T.pack $ show prog)
+    when (doPrettyPrint opts) (TIO.putStrLn $ prettyPrintProg prog)
+    unless (doOmitEval opts) (runProg json prog)
+```
+
+### Interpreting
+
+#### The Environment
+
+After parsing the provided hson script and JSON data, hson is ready to interpret the script.
+
+```hs
+runInterpretWithJSON :: HSONValue -> Program -> IO (Either HSONError HSONValue)
+runInterpretWithJSON json prog = runInterpret (mkEnv json) prog
+
+runInterpretNoJSON :: Program -> IO (Either HSONError HSONValue)
+runInterpretNoJSON prog = runInterpret (mkEnv Null) prog
+```
+
+Before the interpreter runs, the `mkEnv` function constructs the initial environment, which is simply a map with identifier keys and `HSONValue` values. If JSON data was provided, hson binds the parsed value to the `$` identifier; otherwise, `$` evaluates to `null`.
+
+```hs
+type Environment = Map.Map T.Text HSONValue
+
+...
+
+mkEnv :: HSONValue -> Environment
+mkEnv json = Map.singleton "$" json `Map.union` builtInFunctions
+```
+
+The initial environment also includes all built-in functions and their associated identifiers, which are defined in the `builtInFunctions` table.
+
+```hs
+builtInFunctions =
+  Map.fromList
+    [ ("keys", mkFunction keys)
+    , ("values", mkFunction values)
+    , ("hasProperty", mkFunction hasProperty)
+    , ("toJSON", mkFunction hsonToJSON)
+    , ("toString", mkFunction hsonToString)
+    , ("length", mkFunction hsonLength)
+    , ("at", mkFunction hsonAt)
+    , ("reverse", mkFunction hsonReverse)
+    , ("map", mkFunction hsonMap)
+    , ("filter", mkFunction hsonFilter)
+    , ("reduce", mkFunction hsonReduce)
+    ...
+    ]
+```
+
+Each `mkFunction` call constructs a `Function` from a `FunctionDefinition`. A `FunctionDefinition` is a mapping from a list of values representing arguments to an `Eval HSONValue` result.
+
+```hs
+type FunctionDefinition = [HSONValue] -> Eval HSONValue
+
+mkFunction :: FunctionDefinition -> HSONValue
+mkFunction f = Function (Func f)
+```
+
+The `Eval` monad wraps every evaluated result of the hson interpreter. From its definition, we find that `Eval` comprises a composition of monad transformers, each introducing a specific feature to interpreter computations.[^18]
+
+```hs
+newtype Eval a = Eval {unEval :: ReaderT Environment (ExceptT HSONError IO) a}
+  deriving
+    ( Applicative
+    , Functor
+    , Monad
+    , MonadError HSONError
+    , MonadIO
+    , MonadReader Environment
+    )
+```
+
+The `ReaderT Environment` monad transformer provides all interpreter computations access to a fixed environment containing each binding. The `ExceptT HSONError` monad transformer enables interpreter computations to produce and handle errors by calling `throwError` with `HSONError` values. The base monad `IO` integrates I/O capabilities into the  interpreter, which is useful for producing debugging messages during program runtime.[^20]
+
+The `deriving` clause generates for the `Eval` type standard instance declarations for each of the provided typeclasses (e.g., `Functor`, `Applicative`, `Monad`, etc.). Without `deriving`, we would have to explicitly define `Eval` as an instance of each typeclass. Thus, `deriving` provides a shortcut by inheriting each instance from its representation (i.e., `ReaderT Environment (ExceptT HSONError IO) a`). By default, `deriving` is limited to only a few typeclasses, but can be extended with the `GeneralizedNewtypeDeriving` Haskell language extension.[^19]
+
+#### Built-In Functions
+
+Creating a new built-in function entails defining a `FunctionDefinition`, which maps a list `HSONValue` arguments to an `Eval HSONValue`, and binding it to a name within the `builtInFunctions` table. For example, the `reverse` function in hson can be applied to a string or an array. Under the hood, the `reverse` identifier is associated with the `hsonReverse` Haskell function in the environment. Within the definition of `hsonReverse`, pattern matching is used to apply the appropriate Haskell `reverse` function to valid arguments and to throw errors for invalid arguments.
+
+```hs
+builtInFunctions =
+  Map.fromList
+    [ ("keys", mkFunction keys)
+    , ("values", mkFunction values)
+    ...
+    , ("reverse", mkFunction hsonReverse)
+    ...
+    ]
+
+...
+
+hsonReverse :: FunctionDefinition
+hsonReverse [Array arr] = return $ Array $ V.reverse arr
+hsonReverse [String str] = return $ String $ T.reverse str
+hsonReverse [arg] = throwError $ UnexpectedType "array or string" (showType arg)
+hsonReverse args = throwError $ ArgumentCount 1 args
+```
+
+The first two equations in the definition of `hsonReverse` handle valid arguments. Then, if `hsonReverse` receives a single argument of any other type, it throws an `UnexpectedType` error. Otherwise, if `hsonReverse` receives a list of arguments that contains anything other than a single element, it throws an `ArgumentCount` error.
+
+Compare the above definition of `hsonReverse` with the near-identical definition of hson's `length` function, which, like `reverse`, takes as argument either a string or an array and, under the hood, applies the appropriate Haskell `length` function.
+
+```hs
+hsonLength :: FunctionDefinition
+hsonLength [Array arr] = return $ Number $ fromIntegral $ V.length arr
+hsonLength [String str] = return $ Number $ fromIntegral $ T.length str
+hsonLength [arg] = throwError $ UnexpectedType "array or string" (showType arg)
+hsonLength args = throwError $ ArgumentCount 1 args
+```
+
+In general, each built-in function definition follows the similar pattern of implementing behavior for valid argument lists and throwing the appropriate errors for invalid argument lists. Haskell's pattern matching provides a means of handling all possible argument lists in an expressive way. For example, the `includes` function takes two string arguments, `haystack` and `needle`, and returns `true` if `needle` is a substring of `haystack`. If `includes` does not receive exactly two string arguments, hson reports a type error.
+
+```ts
+includes("hello world", "world") // true
+includes("hello world", "Parker") // false
+
+// Call error at (line 1, column 9): Expected string, received number.
+includes("hello world", 3)
+```
+
+In the `includes` function definition, `hsonIncludes`, pattern matching is used to apply the Haskell `isInfixOf` function to an argument list consisting of exactly two string elements. Otherwise, `hsonIncludes` throws the appropriate error.
+
+```hs
+hsonIncludes :: FunctionDefinition
+hsonIncludes [String haystack, String needle] = return $ Bool $ needle `T.isInfixOf` haystack
+hsonIncludes [String _, arg] = throwError $ UnexpectedType "string" (showType arg)
+hsonIncludes [arg, _] = throwError $ UnexpectedType "string" (showType arg)
+hsonIncludes args = throwError $ ArgumentCount 2 args
+```
+
+#### First-Class Function Evaluation
+
+Some built-in hson functions are first-class and accept another function as input. For example, the hson `map` function takes two arguments, an array and a function, and applies the function to each element of the array.
+
+```ts
+map([1,2,3], |n| => n + 1) // [2,3,4]
+```
+
+Under the hood, the function argument is represented as a _closure_, which contains both a function and its environment. This way, a function only has access to the variables defined in the environment that is active at the time of its declaration.[^21] In the following example, the `addX` function can access the variable `x` because `x` is defined before the declaration of `addX`.
+
+```ts
+let x = 2;
+let addX = |n| => n + x;
+map([1,2,3], addX) // [3,4,5]
+```
+
+However, in the following example, `addY` _cannot_ access the value of `y`. Even though `addY` is called after `y` is defined, `y` is not in the environment at the time of declaring `addY`.
+
+```ts
+let addY = |n| => n + y;
+let y = 4;
+// Call error at (line 4, column 4): Undefined variable "y" at (line 1, column 23).
+map([1,2,3], addY)
+```
+
+The Haskell function underlying the hson `map` function, `hsonMap`, reveals how this behavior is encoded.
+
+```hs
+hsonMap :: FunctionDefinition
+hsonMap [Array arr, Closure (Func f) env] = Array <$> local (const env) (V.mapM (f . L.singleton) arr)
+hsonMap [Array _, arg] = throwError $ UnexpectedType "function" (showType arg)
+hsonMap [arg, _] = throwError $ UnexpectedType "array" (showType arg)
+hsonMap args = throwError $ ArgumentCount 2 args
+```
+
+When `hsonMap` receives valid arguments (i.e., an array and a closure), it calls the `local` operation from `ReaderT`, which executes the operation in its second argument with an environment modified by the function passed to its first argument. Here, `local` receives `const env`, which effectively replaces the current environment with the environment stored in the `Closure`. The second argument to `local` is the Haskell `map` function that applies the provided function argument to each element in the provided array.
+
+#### Evaluating hson Programs
+
+The hson interpreter begins by calling `runInterpret`. At a high level, `runInterpret` maps a parsed hson program and an initial environment to an `HSONValue` if it succeeds or an `HSONError` if it fails. More specifically, `runInterpret` calls `interpret`, which returns an `Eval HSONValue`, and unwraps all of the monad transformers that `Eval` comprises.
+
+```hs
+runInterpret :: Environment -> Program -> IO (Either HSONError HSONValue)
+runInterpret env prog = runExceptT $ runReaderT (unEval $ interpret prog) env
+```
+
+The `interpret` function maps a `Program` to an `Eval HSONValue` result representing the evaluated expression at the end of the hson script. The `interpret` function utilizes pattern matching and recursion to handle each variable declaration before evaluating the final expression in its base case. For each variable declaration, the interpreter evaluates the associated initializer expression and binds the identifier to the result before recursively calling `interpret` on the remaining variable declarations with the newly updated environment. Each variable declaration contains either a single identifier, a destructured object, or a destructured array, so pattern matching is again utilized to handle each possibility.
+
+```hs
+interpret :: Program -> Eval HSONValue
+-- base case: no variable declarations remaining, evaluate the expression
+interpret ([], expr) = eval expr
+-- recursive case: evaluate initializer of variable declaration, bind result to identifier,
+interpret (stmt : stmts, expr) = do
+  -- pattern match with `case` to handle the different kinds of variable declarations
+  case stmt of
+    VarDeclStmt (VarDecl (Token _ (Just (String name)) _) initializer) -> do
+      val <- eval initializer
+      local (Map.insert name val) $ interpret (stmts, expr)
+    ObjectDestructureDeclStmt (ObjectDestructureDecl kvs initializer) -> do
+      val <- eval initializer
+      case val of
+        Object o -> local (Map.union $ bindDestObj kvs o) $ interpret (stmts, expr)
+        v -> throwError $ UnexpectedType "object" (showType v)
+    ArrayDestructureDeclStmt (ArrayDestructureDecl elems initializer) -> do
+      val <- eval initializer
+      case val of
+        Array arr -> local (Map.union $ bindDestArr elems arr) $ interpret (stmts, expr)
+        v -> throwError $ UnexpectedType "array" (showType v)
+```
+
+Most of the hson interpreter logic is contained within the `eval` function, which evaluates parsed `Expr` values and produces `Eval HSONValue` results.
+
+```hs
+eval :: Expr -> Eval HSONValue
+```
+
+The `eval` function pattern matches over all possible expressions, evaluating each one appropriately. Literal expression evaluation is the simplest example of the implementation of `eval`: a `Literal` simply contains a `Token`, so `eval` returns the appropriate value given a particular token.
+
+```hs
+newtype Literal = Literal {litTok :: Token}
+  deriving (Show, Eq)
+
+...
+
+data Token = Token
+  { tokenType :: TokenType
+  , literal :: Maybe HSONValue
+  , pos :: SourcePos
+  }
+  deriving (Show)
+
+...
+
+eval (LiteralExpr (Literal (Token _ (Just v) _))) = return v
+eval (LiteralExpr (Literal (Token TokenTrue _ _))) = return $ Bool True
+eval (LiteralExpr (Literal (Token TokenFalse _ _))) = return $ Bool False
+eval (LiteralExpr (Literal (Token TokenNull _ _))) = return Null
+```
+
+If a `LiteralExpr` represents a string or a number literal, then the `literal` field will contain a `Just` result with the corresponding value. Otherwise, the `literal` field is `Nothing`, and `eval` pattern matches on the `tokenType` field.
+
+Evaluating a `BinaryExpr` simply entails evaluating the left-hand side, evaluating the right-hand size, and pattern matching on the operator to apply the appropriate operation to the operands. An operation is either a numeric comparison (`numCmp`), a numeric operation (`numOp`), or a "plus" operation (`valuePlus`) that applies addition to numeric operands and string concatenation otherwise.
+
+```hs
+eval (BinaryExpr (Binary l opTok r)) = do
+  left <- eval l
+  right <- eval r
+  case opTok of
+    Token TokenEqualEqual _ _ -> return $ Bool $ left == right
+    Token TokenBangEqual _ _ -> return $ Bool $ left == right
+    Token TokenGreater _ _ -> numCmp opTok (>) left right
+    Token TokenGreaterEqual _ _ -> numCmp opTok (>=) left right
+    Token TokenLess _ _ -> numCmp opTok (<) left right
+    Token TokenLessEqual _ _ -> numCmp opTok (<=) left right
+    Token TokenMinus _ _ -> numOp opTok (-) left right
+    Token TokenStar _ _ -> numOp opTok (*) left right
+    Token TokenSlash _ _ -> numOp opTok (/) left right
+    Token TokenPlus _ _ -> valuePlus opTok left right
+    _otherToken -> throwError $ UnhandledOperator opTok
+
+valuePlus :: Token -> HSONValue -> HSONValue -> Eval HSONValue
+valuePlus _ (Number x) (Number y) = return $ Number $ x + y
+valuePlus _ (String x) (String y) = return $ String $ x <> y
+valuePlus _ (Number x) (String y) = return $ String $ T.pack (show x) <> y
+valuePlus _ (String x) (Number y) = return $ String $ x <> T.pack (show y)
+valuePlus opTok _ _ = throwError $ TypeError opTok "operands must be either strings or numbers"
+```
+
+Logical operations are similar, but implement short-circuiting instead of immediately evaluating both operands. Notice that the Haskell code that evaluates each logical operation is so expressive that it almost reads like English!
+
+```hs
+eval (LogicalExpr (Logical l opTok r)) = do
+  left <- eval l
+  case opTok of
+    Token TokenOrOr _ _ -> if isTruthy left then return left else eval r
+    Token TokenAndAnd _ _ -> if isTruthy left then eval r else return left
+    Token TokenQuestionQuestion _ _ -> if left == Null then eval r else return left
+    _unrecognizedOperator -> throwError $ UnhandledOperator opTok
+```
+
+Evaluating a `VariableExpr` entails finding the associated value of the identifier in the environment. If the value exists, the expression evaluates to it; otherwise, an `UndefinedVariable` error is thrown. The `eval` function retrieves the environment from the `ReaderT` monad with `ask` and pattern matches over the `Maybe` result of `Map.lookup`.
+
+```hs
+eval (VariableExpr (Variable tok@(Token TokenIdentifier (Just (String s)) _))) = do
+  env <- ask
+  case Map.lookup s env of
+    Just value -> return value
+    Nothing -> throwError $ UndefinedVariable tok
+```
+
+A `CallExpr` represents a function call like `doSomething(x, y)`: it comprises a `callee` expression and a list of argument expressions (`args`). In this case, `doSomething` is the `callee` expression and `x` and `y` are the arguments. The interpreter evaluates a `CallExpr` by first evaluating the `callee` expression. Then, if the result is _callable_, `eval` will evaluate each argument and pass their values as arguments to the `callee`. Otherwise, the interpreter throws an `UncallableExpression` error.
+
+```hs
+eval (CallExpr (Call callee tok args)) = do
+  res <- eval callee
+  case res of
+    Function f -> do
+      args <- mapM eval args
+      fn f args `catchError` (throwError . CallError tok)
+    Closure f env -> do
+      args <- mapM eval args
+      local (const env) $ fn f args `catchError` (throwError . CallError tok)
+    _uncallableValue -> throwError $ UncallableExpression tok
+```
+
+Notice, a callable value is either a `Function` or a `Closure`. The `Function` value represents a built-in function that does not have an associated environment. For a `Closure`, which is associated with an environment, `eval` calls `local` to replace the current environment with the closure's environment before executing the function. Finally, if the function call fails, `eval` catches the error with `catchError` and re-throws it as a `CallError`.
+
+The `eval` function comprises several other definitions, each handling a particular expression type. The goal of walking through some of these definitions has been to reveal how various Haskell features promote the creation of readable, modular, and correct interpreters. For example, Haskell's support for pattern matching and recursion simplifies the process of evaluating each parse tree node while also promoting expressiveness. Discovering how a particular expression is evaluated simply entails finding the definition of `eval` that matches the expression. Moreover, adding interpreter support for a new expression type requires only that a definition of `eval` be created to match that type. Finally, because all `eval` computations produce a result in the `Eval` monad, the interpreter has access to all computational features afforded by the monad transformers that compose `Eval`. In turn, each computational feature of the interpreter is clearly expressed in the definition of `Eval`, and the interpreter computations are necessarily separated from the rest of the program.
+
+### Testing
+
+The restrictions that Haskell enforces about types, purity, and side effects aim to emphasize program correctness and bolster developer confidence. Still, developers working with other programming languages, even those that are imperative and weakly typed, can feel confident about their code by _testing_ its functionality. The "unit test," for example, is one that demonstrates that an individual software component behaves according to the original design specification and intention. In a unit test, the target software component is isolated from the rest of the system, and its input is defined and controlled by the tester.[^5] Essentially, a unit test seeks to answer the question, "Given a specific input, does the unit of code produce the expected output (or side effects)?" A standard framework for writing unit tests is the _arrange-act-assert_ pattern[^4]:
+
+1. Organize the predefined input data and envionment ("arrange")
+2. Invoke the target software component with the input ("act")
+3. Verify that the resulting output matches the expected output ("assert")
+
+Ideally, a test ensures that the target software component behaves correctly for _all possible inputs_. For example, if we're writing a test for a `divide(a, b)` function, we want to ensure that it produces an expected result for all numeric `a` and `b`. However, it would be infeasible to test the behavior of `divide` over its entire input domain. So we might repeat the arrange-act-assert process with, say, positive, negative, and fractional inputs.
+
+```ts
+describe('divide(a, b)', () => {
+  it('divides positive inputs', () => {
+    // arrange
+    const a = 6;
+    const b = 3;
+
+    // act
+    const result = divide(a, b);
+
+    // assert
+    expect(result).toBe(2);
+  });
+
+  it('divides negative inputs', () => {
+    ...
+  });
+
+  it('divides fractional inputs', () => {
+    ...
+  });
+});
+```
+
+In general, we can never hope to test every possible input, but we can still be somewhat confident in our code if our tests pass for various kinds of inputs. However, the burden of generating a sufficient variety of inputs falls on us, the developers, and knowing which inputs are worth testing may demand considerable expertise or creativity. If, for example, we didn't think to test how our `divide(a, b)` function behaves when `b` is 0, we might encounter unexpected behavior or a runtime error when we call the function in circumstances when `b` is possibly 0.
+
+So, code verification via unit testing demands an understanding of the possible inputs that the target code may receive. Unfortunately, this means that, in practice, unit tests written for existing code are only somewhat effective at revealing unexpected behavior. If we know all the possible inputs when testing a chunk of code, we're likely to have considered and handled all the possible inputs when we wrote that code. And if we fail to consider an edge case when we write a chunk of code, we're unlikely to consider that edge case as a possible input when we test that code. Still, unit tests are powerful tools for providing developers with quick feedback and bolstering code against regressions.[^6] Thus, even many Haskell codebases employ unit tests, and Haskell's purity restrictions make those tests relatively easy to write. Where developers working in imperative languages might spend significant time setting up the complex system state or environment with which their target software interacts,[^6] Haskell developers need only provide the appropriate inputs to the target functions, since purity guarantees that function outputs depend only on their inputs and modify no system state.[^7]
+
+The hson codebase does not yet employ unit tests, but leverages a different technique called _property-based testing_. As the name implies, property-based tests work by verifying that a chunk of code abides by a property.[^7] For example, we could test the following property of the `divide(a, b)` function.
+
+```txt
+for all numeric a, b
+such that b != 0
+divide(a, b) * b == a
+```
+
+The beauty of property-based testing is that, unlike unit testing, we're no longer asserting about _specific_ inputs and outputs. Instead, we're asserting about a property of _all_ outputs given _any_ input that satisfies the conditions. Now, instead of manually checking that this property holds for some inputs, we can randomly generate thousands of inputs and assert that they all satisfy some property. And, because Haskell functions are pure, we don't need to worry about setting up and tearing down the correct state and environment for each of these randomly-generated inputs.
+
+The popular Haskell library [QuickCheck](https://hackage.haskell.org/package/QuickCheck-2.14.3/docs/Test-QuickCheck.html) facilitates this random, repeated input generation and output assertion for property-based tests.[^2] In the hson codebase, QuickCheck is used to test the parser with the aim of ensuring a positive answer to the question, "Given any valid string expression in the hson language, does the hson parser generate the appropriate parse tree?"
+
+Verifying this behavior with property-based testing requires a method of generating arbitrary valid expressions for the parser. In hson, this random string generation is accomplished by generating arbitrary valid parse trees and _pretty printing_ them. Pretty printing, in this case, refers to the inverse of parsing: instead of constructing a parse tree from an input program string, a pretty printer takes a parse tree and produces the program string that could have generated it.[^9] The hson codebase pretty-prints parse trees with the [pretty](https://hackage.haskell.org/package/pretty-1.1.3.6/docs/Text-PrettyPrint.html) package, the design of which was originally introduced by John Hughes in "The Design of a Pretty-printing Library".[^10] For example, the following code snippet contains functions responsible for pretty printing hson expressions.
+
+```hs
+prettyPrintExpr :: Expr -> T.Text
+prettyPrintExpr = prettyPrint ppExpr
+
+ppExpr :: Expr -> Doc
+ppExpr (ArrayInitializerExpr (ArrayInitializer _ elems)) = brackets $ commaSep $ map ppExpr elems
+ppExpr (ArrowFunctionExpr (ArrowFunction params body)) = pipes (commaSep $ map ppTok params) <+> text "=>" <+> ppExpr body
+ppExpr (BinaryExpr (Binary l op r)) = ppExpr l <+> ppTok op <+> ppExpr r
+ppExpr (CallExpr (Call callee _ args)) = ppExpr callee <> parens (commaSep $ map ppExpr args)
+ppExpr (ConditionalExpr (Conditional cond matched unmatched)) = ppExpr cond <+> char '?' <+> ppExpr matched <+> char ':' <+> ppExpr unmatched
+ppExpr (DollarExpr (Dollar tok)) = ppTok tok
+ppExpr (GetExpr (Get obj prop)) = ppExpr obj <> char '.' <> ppTok prop
+ppExpr (GroupingExpr (Grouping expr)) = parens $ ppExpr expr
+ppExpr (IndexExpr (Index indexed _ index)) = ppExpr indexed <> brackets (ppExpr index)
+ppExpr (LiteralExpr (Literal tok)) = ppTok tok
+ppExpr (LogicalExpr (Logical l op r)) = ppExpr l <+> ppTok op <+> ppExpr r
+ppExpr (ObjectInitializerExpr (ObjectInitializer _ entries)) = ppObjectLiteral entries
+ppExpr (UnaryExpr (Unary op r)) = ppTok op <> ppExpr r
+ppExpr (VariableExpr (Variable name)) = ppTok name
+
+...
+```
+
+With the pretty printer implemented for hson expressions, we can now apply property-based testing to the expression parser. The approach is to generate an arbitrary valid parse tree, pretty print it, and then parse the pretty-printed program.[^8] If the pretty printer is correct and the original arbitrary parse tree is valid, then the parser is correct if the output parse tree matches the input parse tree. The property can be expressed as follows.
+
+```txt
+for all parse trees a
+such that a is valid
+parse(prettyPrint(a)) == a
+```
+
+By "valid," I mean that it is "possible," or that some program generates it. In practice, the "valid" condition means, for example, that the parse tree follows the precedence rules of the language. Expressions with lower precedence are never direct children of expressions with higher precedence; binary expressions representing addition should never be children of binary expressions representing multiplication.
+
+Encoding this test in Haskell requires only a simple function that maps an expression `Expr` to a test result `Bool`.
+
+```hs
+checkExpressionParser :: Expr -> Bool
+checkExpressionParser ast = case runHSONExprParser (prettyPrintExpr ast) of
+  Left _ -> False
+  Right a -> ast == a
+```
+
+The type `Expr` refers to a node in the hson expression parse tree, so the `checkExpressionParser` test takes a parse tree as input and produces a boolean value. The `runHSONExprParser (prettyPrintExpr ast)` operation corresponds to `parse(prettyPrint(a))`. If the parser produces an error, I return `False`. Otherwise, I assert that the produced parse tree `a` matches the input parse tree `ast`.
+
+I can run this test with `quickCheck checkExpressionParser`, but QuickCheck requires I first define `Expr` as an instance of the `Arbitrary` typeclass. Declaring an `Arbitrary` instance entails telling QuickCheck how it should generate arbitrary values for the given data type, which admittedly presented some challenges with regard to the `Expr` type. Because the property test requires that QuickCheck produces _valid_ parse trees, I had to encode precedence rules for operations and eliminate impossible programs. Furthermore, I had to encode sizing rules to prevent QuickCheck from generating infinitely large parse trees. The language contains array initializer expressions, for example, which represent ordered collections of expressions. Thus, an `ArrayInitializerExpr` node in the parse tree can have an arbitrarily large number of children, each of which may have their own `ArrayInitializerExpr` descendents. Fortunately, QuickCheck provides `sized` and `resize` functions that allow us to bound the size of the generated parse tree.[^2]
+
+```hs
+sized :: (Int -> Gen a) -> Gen a
+```
+
+In the code for generating primary expressions, I utilize `sized` and `resized` to halve the size parameter every time a recursive expression like `ArrayInitializerExpr` is generated.
+
+```hs
+primaryExprGenerator :: Gen Expr
+primaryExprGenerator =
+  oneof
+    [ LiteralExpr <$> arbitrary
+    , DollarExpr <$> arbitrary
+    , VariableExpr <$> arbitrary
+    , GroupingExpr <$> sized (\n -> resize (n `div` 2) arbitrary)
+    , ArrayInitializerExpr <$> sized (\n -> resize (n `div` 2) arbitrary)
+    , ObjectInitializerExpr <$> sized (\n -> resize (n `div` 2) arbitrary)
+    ]
+```
+
+After surmounting the challenges presented by defining the `Arbitrary` instance for `Expr`, I faced two other kinds of errors.
+
+1. My pretty printer implementation did not correctly convert a parse tree to a program. In one case, it printed the contents of a string literal without surrounding it with quotes.
+2. The parser did not correctly parse a generated input.
+
+In total, the property test has three sources of failure: the parse tree generator, the pretty printer, and the parser. Given a particular error, it is easy to discern its source from among these three possibilities.
+
+1. An invalid parse tree indicates an error with the parse tree generator and, more specifically, the `Arbitrary` instance definition.
+2. An unexpected output program string given a valid parse tree (e.g., a string literal expression printed without surrounding quotes) indicates a bug with the pretty printer.
+3. If both the parse tree and pretty-printed program are correct, there is an error with the parser.
+
+The first two errors cases represent unintentended behavior within the test setup and are undesirable. The third error type, however, implies that a test has successfully identified a bug by generating an unhandled edge case! The property test helped me identify several bugs related to precedence and ambiguity this way. The following test output concerning a `GetExpr` is a notable example of a successful test.
+
+```txt
+*** Failed! Falsified (after 9993 tests and 3 shrinks):
+GetExpr
+  ( Get
+      { object =
+          VariableExpr
+            ( Variable
+                { varName =
+                    Token
+                      { tokenType = TokenIdentifier
+                      , literal = Just leaf
+                      }
+                }
+            )
+      , property =
+          Token
+            { tokenType = TokenIdentifier
+            , literal = Just let
+            }
+      }
+  )
+```
+
+The QuickCheck test output tells us that after running 9993 randomly-generated tests, it identified this counterexample that falsifies the property we're testing. The output also provides the culprit input and that it reached it after three "shrinks." A `shrink` is an operation performed by QuickCheck when it discovers a counterexample (i.e., a generated input that leads to a failed assertion). The goal of `shrink` is to produce the smallest similar counterexample that also fails.[^12] Implementing `shrink` is an optional aspect of creating an `Arbitrary` instance and entails defining a function `shrink :: a -> [a]` that returns a list of simpler values from a given generated value. For example, the `Arbitrary` instance declaration for `Expr` contains both `arbitrary` and `shrink` function definitions.
+
+```hs
+instance Arbitrary Expr where
+  arbitrary =
+    oneof
+      [ ArrayInitializerExpr <$> arbitrary
+      , ArrowFunctionExpr <$> arbitrary
+      , BinaryExpr <$> arbitrary
+      , CallExpr <$> arbitrary
+      , ConditionalExpr <$> arbitrary
+      , DollarExpr <$> arbitrary
+      , GetExpr <$> arbitrary
+      , GroupingExpr <$> arbitrary
+      , IndexExpr <$> arbitrary
+      , LiteralExpr <$> arbitrary
+      , LogicalExpr <$> arbitrary
+      , ObjectInitializerExpr <$> arbitrary
+      , UnaryExpr <$> arbitrary
+      , VariableExpr <$> arbitrary
+      ]
+  shrink (ArrayInitializerExpr (ArrayInitializer tok elems)) =
+    exprLeaves
+      ++ elems
+      ++ [ArrayInitializerExpr (ArrayInitializer tok elems') | elems' <- shrink elems]
+  shrink (ArrowFunctionExpr (ArrowFunction params body)) =
+    exprLeaves
+      ++ [body]
+      ++ [ArrowFunctionExpr (ArrowFunction params body') | body' <- shrink body]
+  shrink (BinaryExpr (Binary l tok r)) =
+    exprLeaves
+      ++ [l, r]
+      ++ [BinaryExpr (Binary l' tok r') | (l', r') <- shrink (l, r)]
+  shrink (CallExpr (Call callee tok args)) =
+    exprLeaves
+      ++ (callee : args)
+      ++ [ CallExpr (Call callee' tok args') | (callee', args') <- shrink (callee, args)
+         ]
+  shrink (ConditionalExpr (Conditional cond matched unmatched)) =
+    exprLeaves
+      ++ [cond, matched, unmatched]
+      ++ [ ConditionalExpr (Conditional cond' matched' unmatched')
+         | (cond', matched', unmatched') <- shrink (cond, matched, unmatched)
+         ]
+  shrink (DollarExpr (Dollar _)) = []
+  shrink (GetExpr (Get obj tok)) = exprLeaves ++ [obj] ++ [GetExpr (Get obj' tok) | obj' <- shrink obj]
+  shrink (GroupingExpr (Grouping expr)) =
+    exprLeaves
+      ++ [expr]
+      ++ [GroupingExpr (Grouping expr') | expr' <- shrink expr]
+  shrink (IndexExpr (Index indexed tok index)) =
+    exprLeaves
+      ++ [indexed, index]
+      ++ [ IndexExpr (Index indexed' tok index')
+         | (indexed', index') <- shrink (indexed, index)
+         ]
+  shrink (LiteralExpr (Literal _)) = []
+  shrink (LogicalExpr (Logical l tok r)) =
+    exprLeaves
+      ++ [l, r]
+      ++ [ LogicalExpr (Logical l' tok r')
+         | (l', r') <- shrink (l, r)
+         ]
+  shrink (ObjectInitializerExpr (ObjectInitializer tok entries)) =
+    exprLeaves
+      ++ mapMaybe snd entries
+      ++ [ ObjectInitializerExpr (ObjectInitializer tok entries')
+         | entries' <- shrink entries
+         ]
+  shrink (UnaryExpr (Unary tok r)) = exprLeaves ++ [r] ++ [UnaryExpr (Unary tok r') | r' <- shrink r]
+  shrink (VariableExpr (Variable _)) = []
+```
+
+When QuickCheck goes to shrink a value, it will call its defined `shrink` function to produce an ordered list of candidates from which it will try to pick a simpler counterexample.[^11] By default, `shrink` produces an empty list and thus QuickCheck will not try to simplify counterexamples, but meticulously implementing `shrink` for complex recursive structures like `Expr` has a substantial payoff. From the test output above, we see that QuickCheck was able to simplify a parse tree counterexample to a single `GetExpr` node after just three shrinks! Analyzing the `GetExpr`, I deduced that it corresponds to the following hson program.
+
+```ts
+leaf.let
+```
+
+Then, I recognized the bug: my parser rejected `leaf.let` because the property `let` is a reserved word in my language, and the `identifier` parser combinator I used to parse object properties fails when it encounters reserved words.
+
+```hs
+parseGet :: HSONParser (Expr -> Expr)
+parseGet = do
+  dot
+  property <- identifier -- `identifier` fails if the parsed string is a reserved word
+  return $ \object -> GetExpr Get{object = object, property = property}
+```
+
+The failed test also made me consider that my parser might be rejecting reserved words that appear as properties in object literal expressions like the following:
+
+```ts
+{ false: true }
+```
+
+Indeed, when I ran this program through my interpreter, I encountered an error.
+
+```txt
+(line 1, column 8):
+unexpected reserved word "false"
+expecting expression
+```
+
+And I discovered that the cause was, again, my use of the `identifier` parser combinator.
+
+```hs
+keyValue = do
+  k <- try tokenString <|> identifier -- the culprit!
+  colon
+  v <- expression
+  return (k, Just v)
+```
+
+This behavior of the hson parser is unintentional and potentially disruptive. For example, it would prevent a user who parsed a JSON object with the property `let` from being able to access that property by using `$.let`. So, thanks to the power of property-based testing, I discovered bugs preventing reserved words from being defined and accessed as properties of objects. This is an edge cases that I might not have considered while writing unit tests, and was identified only because QuickCheck ran thousands of randomly-generated test inputs against my parser.
+
+[^1]: Check out [my article about testing parsers with QuickCheck!](/posts/testing-parsers-thoroughly-with-property-based-testing)
+[^2]: See [QuickCheck: a lightweight tool for random testing of Haskell programs](https://dl.acm.org/doi/10.1145/351240.351266)
+[^3]: See [Parsec: Direct Style Monadic Parser Combinators For The Real World](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/parsec-paper-letter.pdf)
+[^4]: See [The Quality of Junit Tests](https://www.researchgate.net/profile/Dor-Maayan/publication/323847238_The_Quality_of_Junit_Tests/links/5aec525a458515f59982137e/The-Quality-of-Junit-Tests.pdf)
+[^5]: See [What Is Software Testing, And Why Is It So Hard?](https://d1wqtxts1xzle7.cloudfront.net/31144056/Testing.pdf?1366313461=&response-content-disposition=inline%3B+filename%3DWhat_is_software_testing_And_why_is_it_s.pdf&Expires=1709918337&Signature=TFFQ65RMP~MqphSli4WfSFg1RU3YAE7MZtC-EHRlIwFzeSu8Lzeb1Ij901fBg~3-GZpmiafRRKRvrpVPJ1zg3SyT~-Jzt1dNlicHekeiOofGYOe7vE3oLw4TkgOnsGDEQdXtOW3XKKROUFOwY0rsl~McE8GkNeUCsS0pWQeHoKzxUVOgmqgWsa7HhTIXevukc7hrJe6RL9hWQed-oCO1gvgCC~aO~bBaYMd2rOg17kVAFQ4mLQddtbOQPpc7DXAKiOsQaiJMVVpCgK4Z14PCyYnZtIzNP9WzylVdeU15G557ZJKxkGJiaj4bipQIwT2sN7aZdmcKUdBPZ4tLGf3KYA__&Key-Pair-Id=APKAJLOHF5GGSLRBV4ZA)
+[^6]: See [A Survey of Unit Testing Practices](https://www.sast.se/q-moten/2007/stockholm/q1/2007_q1_runeson_artikel.pdf)
+[^7]: See [How Functional Programming Mattered](https://academic.oup.com/nsr/article/2/3/349/1427872)
+[^8]: See [Parsec Parser Testing with QuickCheck](https://lstephen.wordpress.com/2007/07/29/parsec-parser-testing-with-quickcheck/)
+[^9]: See [A prettier printer](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=ea8492f775ed0087b0499073d1c31ae379eb311f)
+[^10]: See [The Design of a Pretty-printing Library](https://www.researchgate.net/profile/John-Hughes-22/publication/226525714_The_Design_of_a_Pretty-printing_Library/links/00b4952bf4212ca968000000/The-Design-of-a-Pretty-printing-Library.pdf)
+[^11]: See [Experiences with QuickCheck: Testing the Hard Stuff and Staying Sane](https://link.springer.com/chapter/10.1007/978-3-319-30936-1_9)
+[^12]: See [Reflecting on Random Generation](https://dl.acm.org/doi/pdf/10.1145/3607842)
+[^13]: See [text: An efficient packed Unicode text type](https://hackage.haskell.org/package/text)
+[^14]: See [Combinator Parsing: A Short Tutorial](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=07f63cfff2063606180070106192d5be5cf87fc8)
+[^15]: See [parsec: Monadic parser combinators](https://hackage.haskell.org/package/parsec)
+[^16]: See [aeson: Fast JSON parsing and encoding](https://hackage.haskell.org/package/aeson)
+[^17]: See [optparse-applicative: Utilities and combinators for parsing command line options](https://hackage.haskell.org/package/optparse-applicative)
+[^18]: See [Monad Transformers and Modular Interpreters](https://dl.acm.org/doi/pdf/10.1145/199448.199528)
+[^19]: See [Generalised derived instances for newtypes](https://ghc.gitlab.haskell.org/ghc/doc/users_guide/exts/newtype_deriving.html)
+[^20]: See [Monad Transformers Step by Step](https://blogs.asarkar.com/assets/docs/haskell/Monad%20Transformers%20Step%20by%20Step%20-%20Grabmuller.pdf)
+[^21]: See [Crafting Interpreters](https://craftinginterpreters.com/)
+

@@ -1,0 +1,25 @@
+---
+title: How I Leveled Up as an Engineer by Learning Infrastructure As Code
+keywords: fullstack, terraform, infrastructure
+description: When I started my Software Engineering career after college, I was overwhelmed with trying to understand my team's cloud services and configurations. However, once I learned Terraform/Terragrunt, I unlocked a newfound ability to reason about cloud architecture and systems design.
+url: https://parkerlandon.com/posts/level-up-by-learning-iac
+ogImageUrl: https://adoring-jackson-1187ff.netlify.app/.netlify/functions/gen-opengraph-image?title=How%20I%20Leveled%20Up%20by%20Learning%20Infrastructure%20As%20Code&tags=fullstack,terraform,systems
+postnum: 7
+---
+
+My college computer science curriculum taught me theory and foundations: data structures, algorithms, operating systems, etc. Meanwhile, I had heard murmurs about the looming Software Engineering industry and its learning curve—whispers of microservices, containers, and cloud computing.
+
+Indeed, when I started my software engineering career after college, I was tossed into coding within systems involving pub/sub topics and message queues, among other foreign concepts. University hadn't taught me the details of modern software services, so I shied away from working with the infrastructure my team managed.
+
+Eventually, after growing more familiar with my team's codebases, I felt prepared to face the unknown. Several times, I attempted to sign in to our cloud provider account and navigate our services in the console, and each time, I ended up feeling more confused than when I began. I failed to grok how these systems' interactions mapped onto their seemingly countless configurations. I was overwhelmed by all the details presented by the console's interface.
+
+Then I figured, if I couldn't even understand the infrastructure from the console user interface, how could I expect to understand it from our team's Infrastructure as Code (IaC) repository? I had never even used Terraform! Turns out, this conclusion was mistaken. The IaC was the only way I could gain insight into my team's services.
+
+Working on a personal project, I forced myself to try Terraform. I discovered it can be used with [_many_ cloud providers](https://registry.terraform.io/browse/providers), not just the ones my work team used. Soon, I had set up an IaC repository to manage my project's DigitalOcean Droplets and Cloudflare domains. I saw how my Terraform code represented the resources I deployed and the relationships between them. I could map each resource's configuration to the settings displayed by the console interface. For any configurations or resources I didn't understand, I referred to the Terraform provider's documentation, which typically details more than the provider's console. And now, with AI trained on Terraform code, I can ask a chat model to review my proposed changes or clarify existing infrastructure.
+
+Ultimately, I learned that IaC was not some legendary technique wielded only by those senior engineers with unattainable knowledge. It's a tool that even I could use to learn and reason about an existing system. Further, I assert that it's the _only_ viable avenue to understanding existing architecture or developing new infrastructure. The alternatives will leave you scrambled as they inundate you with details and decisions. And, as an AWS Solutions Architect recently told me, using the console for anything more than testing is unreasonable—you'll forget details of each service, configuration, and relationship within the week.
+
+Now, having become familiar with Terraform and using it to deploy AWS infrastructure for my personal projects, I can't help but feel amazed by my newfound comfort and familiarity with the services my team manages at work.
+
+Don't hesitate to learn IaC because you don't understand software infrastructure, but rather, strive to learn IaC _so that_ you can understand it.
+

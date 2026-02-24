@@ -1,0 +1,196 @@
+---
+title: Parsing Chained Expressions, Functionally
+keywords: haskell, parsers, interpreters, functional programming
+description: While immutability can help prevent bugs, it can also create challenges. Such challenges arise when parsing chained expressions from left-to-right, as those expressions must be nested in the parse tree from right-to-left.
+url: https://parkerlandon.com/posts/parsing-chained-expressions-functionally
+ogImageUrl: https://adoring-jackson-1187ff.netlify.app/.netlify/functions/gen-opengraph-image?title=Parsing%20Chained%20Expressions%2C%20Functionally&tags=haskell%2Cfunctional%20programming
+postnum: 1
+---
+
+Recently, I've been developing a command-line JSON processor called [hson](https://github.com/LordPrkr/hson). hson is implemented in Haskell and comprises a CLI and interpreter for manipulating JSON data with the hson language.
+
+hson takes two inputs, an hson script and some JSON data, and enables the user to format the JSON data via the hson script. For example, given the following `sinistcha.json`,
+
+```json
+{
+  "name": "sinistcha",
+  "order": 1097,
+  "species": {
+    "name": "sinistcha",
+    "url": "https://pokeapi.co/api/v2/pokemon-species/1013/"
+  },
+  "sprites": {
+    "front_default": "https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/1013.png"
+  }
+}
+```
+
+we can get the `front_default` sprite like so:
+
+```bash
+$ hson "$.sprites.front_default" --jsonfile "sinistcha.json"
+https://raw.githubusercontent.com/pokeapi/sprites/master/sprites/pokemon/1013.png
+```
+
+The semantics of the above hson script `$.sprites.front_default` are intuitive:
+
+1. The contents of `sinistcha.json` are parsed and bound to the `$` identifier.
+2. The `sprites` field of `sinistcha.json` is accessed.
+3. The `front_default` field of `sprites` is accessed.
+4. hson prints the value of the `front_default` field.
+
+The meat of this expression is parsed in the `call` function of my recursive descent parser, which is responsible for
+
+- **Get** expressions that access a property on an object, like `$.sprites`.
+- **Call** expressions that execute code within a callable value. For example, `keys()` executes the `keys` function.
+- **Index** expressions that access an element at an index within an indexable value. For example, `items[0]` accesses the index `0` in `items`.
+
+The `call` function must also consider that each expression can be _chained_. As we saw above, Get expressions can be chained to access properties within properties (e.g., `$.sprites.front_default`). The same kind of chaining can occur with Call and Index expressions, too, with expressions like `logging.getLogs()[0].toJSON()` and `listOfFunctions[0]().result`.
+
+All of these responsibilities are captured in the following function definition.
+
+```haskell
+call :: HSONParser Expr
+call = do
+  expr <- primary
+  try (threadl expr <$> many (try parseCall <|> try parseIndex <|> parseGet))
+    <|> return expr
+ where
+  threadl = foldl (&)
+```
+
+At first glance, this definition may seem daunting. However, the responsibilities of `call` are just as I shared above.
+
+1. Parse a _primary expression_, `expr`, which will evaluate to the value being called/indexed/accessed by the call/index/get expression.
+2. If `expr` is not called, indexed, or accessed, simply return `expr`
+3. Otherwise, handle _many_ calls, indexes, or property accesses.
+
+The complexity in this function arises with the last point: handling a chain of many Get, Call, or Index expressions. Because getting, calling, and indexing are all left-associative, the original expression being accessed/called/indexed becomes the most deeply nested expression in the parse tree. To illustrate, the parse tree for our original expression `$.sprites.front_default` has `DollarExpr` as its deepest expression node:
+
+```haskell
+GetExpr
+( Get
+  { object =
+    GetExpr
+      ( Get
+        { object =
+          DollarExpr
+            ( Dollar
+              { dollarTok =
+                Token
+                  { tokenType = TokenDollar
+                  , literal = Nothing
+                  , pos = (line 1, column 2)
+                  }
+              }
+            )
+        , property =
+          Token
+            { tokenType = TokenIdentifier
+            , literal = Just sprites
+            , pos = (line 1, column 10)
+            }
+        }
+      )
+  , property =
+    Token
+      { tokenType = TokenIdentifier
+      , literal = Just front_default
+      , pos = (line 1, column 24)
+      }
+  }
+)
+```
+
+The challenge is that our parser scans _left to right_ but must nest the expressions _right to left_. In an imperative language with mutability, one could repeatedly set the previously parsed expression as the child of the next Get/Call/Index expression. For example, one might handle chained Get expressions in Go as follows:
+
+```go
+func (p *Parser) call() (Expr, error) {
+  expr, _ := p.primary()
+  for {
+    if (p.match(TokenDot)) {
+      name, _ := p.consume(TokenIdentifier, "Expect property name after '.'.")
+      expr = NewGetExpr(expr, name)
+    } else {
+        break
+    }
+  }
+  return expr, nil
+}
+```
+
+However, a pure functional language such as Haskell doesn't afford us the liberty of reassigning variables like `expr`.
+
+**So, how can we parse chained expressions?**
+
+The answer lies in our definitions of `parseGet`, `parseCall`, and `parseIndex`, as well as in our use of `threadl`. First, let's examine those definitions.
+
+```haskell
+parseGet :: HSONParser (Expr -> Expr)
+parseGet = do
+  dot
+  property <- identifier
+  return $ \object -> GetExpr Get{object = object, property = property}
+
+parseCall :: HSONParser (Expr -> Expr)
+parseCall = do
+  parenPos <- getPosition
+  args <- parens arguments
+  return $ \callee ->
+    CallExpr
+      Call
+        { callee = callee
+        , paren = Token{tokenType = TokenLeftParen, literal = Nothing, pos = parenPos}
+        , args = args
+        }
+
+parseIndex :: HSONParser (Expr -> Expr)
+parseIndex = do
+  bracketPos <- getPosition
+  idx <- brackets expression
+  return $ \indexed ->
+    IndexExpr
+      Index
+        { openIndexBracket =
+            Token{tokenType = TokenLeftBracket, literal = Nothing, pos = bracketPos}
+        , indexed = indexed
+        , index = idx
+        }
+```
+
+The parsing performed by each function is straightforward:
+
+- `parseGet` parses a dot followed by an identifier
+- `parseCall` parses arguments surrounded by parentheses
+- `parseIndex` parses an expression surrounded by brackets
+
+The unique aspect of these functions, though, is they each `return` a function, namely `Expr -> Expr`. What do these functions do? They each return a newly constructed parent expression with the input expression as its child. Essentially, these functions map child expressions to parent expressions.
+
+So, when we parse `many` instances of Get, Call, or Index, we receive a list of `Expr -> Expr`.
+
+```haskell
+-- HSONParser [Expr -> Expr]
+many (try parseCall <|> try parseIndex <|> parseGet)
+```
+
+Now our goal is to use the leftmost expression (e.g., `$`) to repeatedly construct nested Get/Call/Index expressions. We can achieve this by sequential, left-associative application of each function in `[Expr -> Expr]` to the result of the previous function. More specifically,
+
+1. Pass the leftmost expression as the argument to the first function (`Expr -> Expr`) in the list, producing an `Expr`
+2. Take the newly constructed `Expr` and pass it to the next function in the list, producing another `Expr`
+3. Repeat through all the functions in the list.
+
+This repeated function application is carried about by our `threadl` function, which is simply a left-associative fold over the list of functions.
+
+```haskell
+threadl = foldl (&)
+````
+
+The `(&)` operator comes from `Data.Function` and is the `flip` of infix function application `($)`:
+
+```haskell
+(&) = flip ($)
+-- e.g., 3 & (+1) == 4
+```
+
+To summarize, we can parse chained expressions in Haskell by creating a list of functions that map child expressions to newly constructed parent expressions, then thread the original, leftmost expression through those functions to produce the final root expression. This solution exemplifies a broader pattern of returning and applying "setter" functions wherever we might employ mutability and reassignment in an imperative language.
+

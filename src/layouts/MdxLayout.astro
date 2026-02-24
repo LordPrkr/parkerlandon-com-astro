@@ -1,0 +1,25 @@
+---
+import BaseLayout from "./BaseLayout.astro";
+import { TitleText } from "@/components/typography/title-text";
+import type { PageMetadata } from "@/lib/types/PageMetadata";
+
+interface Props {
+  meta: PageMetadata;
+}
+
+const { meta } = Astro.props;
+
+const articleMeta = {
+  ...meta,
+  type: meta.type ?? "article",
+};
+---
+
+<BaseLayout meta={articleMeta}>
+  <main class="max-w-3xl">
+    {meta.title !== undefined && <TitleText>{meta.title}</TitleText>}
+    <article>
+      <slot />
+    </article>
+  </main>
+</BaseLayout>

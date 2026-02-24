@@ -1,0 +1,103 @@
+---
+title: Pure Functional Programming in Context
+keywords: haskell, functional programming
+description: What is pure functional programming, and how does it compare to the more mainstream imperative, object-oriented programming paradigm? I present a brief history of the problems FP aims to solve.
+url: https://parkerlandon.com/posts/pure-functional-programming-in-context
+ogImageUrl: https://adoring-jackson-1187ff.netlify.app/.netlify/functions/gen-opengraph-image?title=Pure%20Functional%20Programming%20in%20Context&tags=haskell,functional%20programming
+postnum: 5
+---
+
+> **Note:** I produced this article as part of a series of Haskell pieces I wrote while developing my senior thesis. That thesis is available now and contains a more polished version of this article. See [A Survey of Practical Haskell: Parsing, Interpreting, and Testing](https://digitalcommons.spu.edu/cgi/viewcontent.cgi?article=1224&context=honorsprojects&z=1717695924).
+
+### Object-Oriented Programming
+
+If you’ve written code in a contemporary programming language, you’re probably familiar with "object-oriented programming." Since its popularity surge among academics and software developers in the 1990s, the object-oriented paradigm has dominated mainstream computer programming, existing as the core of pervasive programming languages like Java and C++ [^1]. Object-oriented programming entails encapsulating data within "objects" possessing properties and behaviors defined by the object’s "class." Classes are blueprints for objects: they represent the type, behaviors, and properties that instantiated objects of that class will have. The following `Rectangle` class, for example, defines `_length` and `_width` properties and exposes an `area` method.
+
+```ts
+// The Rectangle Class: a "blueprint" of every Rectangle object
+class Rectangle {
+  private _length: number;
+  private _width: number;
+
+  constructor(length: number, width: number) {
+    this._length = length;
+    this._width = width;
+  }
+
+  area() {
+    return this._length * this._width;
+  }
+}
+
+// myRectangle: an instantiated object of the Rectangle class
+const myRectangle = new Rectangle(4, 3);
+myRectangle.area(); // 12!
+```
+
+A central aspect of the object-oriented paradigm is encoding hierarchical relationships between classes via _inheritance_ and _composition_. For example, one could use inheritance to represent the relationship between squares and rectangles (i.e., that squares are rectangles) by creating a new class `Square` that inherits behaviors and properties from `Rectangle`.
+
+But why undergo this effort of encoding classes, behaviors, properties, and relationships? Much motivation for object-oriented programming stems from the consequences of the imperative style of traditional programs.
+
+### Imperative Programming and Side Effects
+
+Imperative programming is a style in which program behavior is encoded as a sequence of state transitions from an initial state to a final state. Each operation in an imperative program may have the _side effect_ of mutating the system's overall state. If intentional or "correct," these side effects incrementally transition the system's state toward the desired final state.[^2] However, an unintentional or "incorrect" side effect may cause the system to produce an unexpected result.
+
+A goal of object-oriented programming (i.e., encoding classes, behaviors, properties, relationships, etc.) is to encapsulate these state updates by containing them within objects and abstracting them with a defined interface. Interaction with the private `_length` and `_width` properties of the `myRectangle` object, for example, is mediated by the `Rectangle` class and its defined interface (namely, its `constructor` and the `area` method). The private access modifiers on the _length and _width properties prevent any code outside the class definition from mutating those values. This way, state updates are more controlled, and unintended results are more easily identified as occurring within a class instead of "somewhere in the system."
+
+Still, state mutation represents only one kind of side effect. Programs may also
+
+- print text
+- read data from a file
+- query a database
+- execute other programs
+- send emails
+- launch missiles[^2]
+
+Typically, the imperative style allows these side effects to occur anywhere in the program, and often without any indication or warning that they occur. A program written in TypeScript, for example, can perform input/output operations freely, enabling unrestricted interaction with the "outside world."
+
+```ts
+// Our `main` function does not indicate that this program launches missiles.
+function main() {
+    console.log("Hello world!");
+    foo();
+}
+
+...
+
+function foo() {
+    // Indeed, this program launches missiles.
+    launchMissiles();
+}
+```
+
+While the liberty to produce side effects may feel convenient when writing a program, it introduces more possibilities for creating incorrect programs with unexpected results. In general, programming languages make a trade-off between correctness and "convenience." However, an incorrect program is almost always inconvenient, and a language feature that affords convenience during a program’s initial implementation may prove inconvenient when refactoring and maintaining that program. The following sections introduce the "functional programming" (or "FP") style, a programming language paradigm emphasizing correctness. As this paper aims to convey, the "restrictions" introduced by this paradigm are liberating in practice as they promote correctness, facilitate tractable program reasoning, and encourage greater developer confidence.
+
+### Functional Programming and Purity
+
+According to the FP style, a program is a function defined in terms of other functions; programs are compositions of functions. Rather than performing computations as sequences of state transitions, functional computations are carried out by applying functions to arguments. Of course, imperative programming languages often provide the ability to construct and apply functions, too, but the functional programming style distinguishes itself by promoting _purity_.
+
+A function is said to be _pure_ if its execution produces no side effects and its output depends on nothing besides its input. In other words, the result of a pure function is wholly determined by its input; it will always produce the same output given the same input. Thus, the behavior of a pure function is captured entirely by its definition: its result neither mutates nor is influenced by any program state.
+
+The upshot of purity is that it eliminates the possibility of unwanted side effects by doing away with side effects altogether. While this limitation may seem severe, it affords several benefits that promote correctness. For example, a functional program is easy to reason about. Because a pure function's behavior is captured entirely by its definition, there is never a concern for how a function operates in the broader context of a stateful program. For the same reasons, functional programs tend to be trivial to test. While a test of an impure function might first require arranging the appropriate preconditions (a generally laborious task within an imperative program), testing a pure function simply requires providing it with the expected inputs and asserting about its outputs. Purity also affords several benefits with regard to writing parallel programs, since parallel programming is fundamentally concerned with avoiding unexpected interactions of side effects.[^3]
+
+Still, it may seem that there exists a fatal problem with the purity restriction: a program composed solely of pure functions is useless. Necessary operations like receiving inputs and displaying outputs are kinds of side effects, so they cannot be performed in a pure context. Fortunately, Haskell facilitates effectful programming through _monads_, which encode impure functions and create a boundary distinguishing effectful operations from pure ones.[^4] Monads are a part of Haskell's rich static type checking system, which is another feature like purity that aims to promote correctness. Although it cannot eliminate all unexpected or undesired behaviors, static type checking prevents the programmer from introducing a certain class of errors, such as adding numbers to boolean values.[^5] While there exists disagreement about the cost to convenience of static type checking and the extent to which it ensures program safety,[^6] [^7] I illustrate in my article ["A Survey of Practical Haskell"](/posts/a-survey-of-practical-haskell) how Haskell's robust type system promotes correctness while still enabling flexibility.
+
+Despite their provided benefits, Haskell and pure functional programming languages more broadly have never reached the popularity of imperative, object-oriented languages like C++ and Java.[^1] In 1998, Philip Wadler presented his paper _Why no one uses functional languages_, ascribing this lack of adoption not to ignorance or inferior program performance but to shortcomings of strongly-typed functional programming language implementations and ecosystems at the time.[^8] While his concerns with portability, availability, tooling, and libraries were substantial then, they have largely been addressed in functional programming languages like Haskell today.
+
+Yet, strongly-typed pure functional programming languages like Haskell still enjoy significantly less _practical application_—for example, in the software engineering industry and commercial world—than their mainstream counterparts.[^9] Sure, functional programming has greatly influenced these domains, as features from functional languages like pattern matching, generics, type inference, and first-class functions have been adopted by and become central to the most widely-used programming languages today, but the functional programming languages themselves have primarily remained tools of researchers and hobbyists.[^1] [^9] Indeed, the measurable influence of functional features is a testament to the work of these users, but as Wadler suggested in 1998, there exists tension between applying a language to building useful systems and using that language to drive programming language research innovations.[^8]
+
+Despite the relative obscurity of pure functional programming languages and their historic emphasis on programming language research, many functional programmers, including myself, advocate for their fitness in practical settings. Even when pure functional programming languages were radical, slow, and impractical, the legendary John Backus endorsed functional programming as a practical tool in his 1977 Turing Award Lecture.[^9] [^10]
+
+Thus, my purpose in writing about Haskell and pure functional programming has been to demonstrate how they are practical tools for creating useful systems. An application that I'm implementing now with Haskell is _hson_, a scripting language for processing JSON; you can read more about it in my article ["Introducing hson."](/posts/introducing-hson) Or, if you would like to learn more about the many features of Haskell, check out my article ["A Survey of Practical Haskell."](/posts/a-survey-of-practical-haskell)
+
+[^1]: See [The Early History of F#](https://fsharp.org/history/hopl-final/hopl-fsharp.pdf)
+[^2]: See [How Functional Programming Mattered](https://academic.oup.com/nsr/article/2/3/349/1427872)
+[^3]: See [Why Parallel Functional Programming Matters: Panel Statement](https://link.springer.com/chapter/10.1007/978-3-642-21338-0_17)
+[^4]: See [The Essence of Functional Programming](https://dl.acm.org/doi/10.1145/143165.143169)
+[^5]: See _Types and Programming Languages_ by B.C. Pierce
+[^6]: See [Static Typing Where Possible, Dynamic Typing When Needed](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=e670c72afa489ffdfab77852a0c9781e082fc266)
+[^7]: See [Scripting: Higher-Level Programming for the 21st Century](https://web.stanford.edu/~ouster/cgi-bin/papers/scripting.pdf)
+[^8]: See [Why no one uses functional languages](https://dl.acm.org/doi/pdf/10.1145/286385.286387)
+[^9]: See [A History of Haskell](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/07/history.pdf)
+[^10]: See [Can programming be liberated from the von Neumann style?](https://dl.acm.org/doi/10.1145/359576.359579)
+
