@@ -1,6 +1,6 @@
-import * as loom from "@loomhq/loom-embed";
-import { useEffect, useState } from "react";
-import { Skeleton } from "../ui/skeleton";
+import * as loom from '@loomhq/loom-embed';
+import { useEffect, useState } from 'react';
+import { Skeleton } from '../ui/skeleton';
 
 type LoomEmbedProps = {
   url: string;

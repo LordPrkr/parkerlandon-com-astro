@@ -1,14 +1,7 @@
-import type { PortfolioItem } from "@/lib/portfolio";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "../ui/card";
-import PortfolioCardTag from "./portfolio-card-tag";
-import PortfolioCardDetailsDialog from "./portfolio-card-details-dialog";
+import type { PortfolioItem } from '@/lib/portfolio';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
+import PortfolioCardTag from './portfolio-card-tag';
+import PortfolioCardDetailsDialog from './portfolio-card-details-dialog';
 
 interface PortfolioCardProps {
   item: PortfolioItem;
@@ -18,11 +11,7 @@ export default function PortfolioCard({ item }: PortfolioCardProps) {
   return (
     <Card className="flex flex-col justify-between gap-4">
       <CardHeader className="flex flex-row items-center gap-4 pb-0">
-        <span
-          aria-label={`${item.title} Emoji`}
-          role="img"
-          className="text-6xl"
-        >
+        <span aria-label={`${item.title} Emoji`} role="img" className="text-6xl">
           {item.emoji}
         </span>
         <div className="flex flex-col gap-1">

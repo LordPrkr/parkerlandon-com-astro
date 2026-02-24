@@ -1,5 +1,5 @@
-import type { PortfolioItem } from "@/lib/portfolio";
-import PortfolioCard from "./portfolio-card";
+import type { PortfolioItem } from '@/lib/portfolio';
+import PortfolioCard from './portfolio-card';
 
 interface PortfolioListProps {
   items: PortfolioItem[];

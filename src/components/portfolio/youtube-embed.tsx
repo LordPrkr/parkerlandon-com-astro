@@ -1,5 +1,5 @@
-import { cn } from "@/lib/utils";
-import type { CSSProperties } from "react";
+import { cn } from '@/lib/utils';
+import type { CSSProperties } from 'react';
 
 type YoutubeEmbedProps = {
   embedUrl: string;
@@ -7,14 +7,10 @@ type YoutubeEmbedProps = {
   style?: CSSProperties;
 };
 
-export default function YoutubeEmbed({
-  embedUrl,
-  className,
-  style,
-}: YoutubeEmbedProps) {
+export default function YoutubeEmbed({ embedUrl, className, style }: YoutubeEmbedProps) {
   return (
     <iframe
-      className={cn("w-full aspect-video", className)}
+      className={cn('w-full aspect-video', className)}
       style={style}
       src={embedUrl}
       title="YouTube video player"

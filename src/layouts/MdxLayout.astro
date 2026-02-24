@@ -1,7 +1,7 @@
 ---
-import BaseLayout from "./BaseLayout.astro";
-import { TitleText } from "@/components/typography/title-text";
-import type { PageMetadata } from "@/lib/types/PageMetadata";
+import BaseLayout from './BaseLayout.astro';
+import { TitleText } from '@/components/typography/title-text';
+import type { PageMetadata } from '@/lib/types/PageMetadata';
 
 interface Props {
   meta: PageMetadata;
@@ -11,7 +11,7 @@ const { meta } = Astro.props;
 
 const articleMeta = {
   ...meta,
-  type: meta.type ?? "article",
+  type: meta.type ?? 'article',
 };
 ---
 

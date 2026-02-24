@@ -1,15 +1,8 @@
-import type { PostMetadata } from "@/lib/types/PostMetadata";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "../ui/button";
-import PostCardTopic from "./post-card-topic";
-import AnchorText from "../typography/anchor-text";
+import type { PostMetadata } from '@/lib/types/PostMetadata';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '../ui/button';
+import PostCardTopic from './post-card-topic';
+import AnchorText from '../typography/anchor-text';
 
 type PostCardProps = {
   post: PostMetadata;

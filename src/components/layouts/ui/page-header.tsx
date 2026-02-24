@@ -1,17 +1,16 @@
-import LogoHeading from "./logo-heading";
-import { useBreakpoint } from "@/lib/useBreakpoint";
-import HeaderNavigation, { type NavigationItem } from "./header-navigation";
-import HamburgerSheet from "./hamburger-sheet";
+import LogoHeading from './logo-heading';
+import { useBreakpoint } from '@/lib/useBreakpoint';
+import HeaderNavigation, { type NavigationItem } from './header-navigation';
+import HamburgerSheet from './hamburger-sheet';
 
 const NAVIGATION_MENU_ITEMS: NavigationItem[] = [
-  { title: "Portfolio", href: "/portfolio" },
-  { title: "Posts", href: "/posts" },
-  { title: "About", href: "/about" },
+  { title: 'Portfolio', href: '/portfolio' },
+  { title: 'Posts', href: '/posts' },
+  { title: 'About', href: '/about' },
 ];
 
 export default function PageHeader() {
-  const currentPath =
-    typeof window !== "undefined" ? window.location.pathname : "/";
+  const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/';
   return (
     <header className="flex flex-row items-center justify-between w-full">
       <LogoHeading />
@@ -21,19 +20,8 @@ export default function PageHeader() {
 }
 
 function Navigation({ currentPath }: { currentPath: string }) {
-  const isSm = useBreakpoint("sm");
+  const isSm = useBreakpoint('sm');
   if (isSm === null) return null;
-  if (!isSm)
-    return (
-      <HamburgerSheet
-        menuItems={NAVIGATION_MENU_ITEMS}
-        currentPath={currentPath}
-      />
-    );
-  return (
-    <HeaderNavigation
-      menuItems={NAVIGATION_MENU_ITEMS}
-      currentPath={currentPath}
-    />
-  );
+  if (!isSm) return <HamburgerSheet menuItems={NAVIGATION_MENU_ITEMS} currentPath={currentPath} />;
+  return <HeaderNavigation menuItems={NAVIGATION_MENU_ITEMS} currentPath={currentPath} />;
 }

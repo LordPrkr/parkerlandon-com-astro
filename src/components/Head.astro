@@ -1,29 +1,22 @@
 ---
-import type { PageMetadata } from "@/lib/types/PageMetadata";
+import type { PageMetadata } from '@/lib/types/PageMetadata';
 
 interface Props {
   meta?: PageMetadata;
 }
 
-const DEFAULT_KEYWORDS =
-  "programming, software engineering, development, frontend, backend, fullstack";
+const DEFAULT_KEYWORDS = 'programming, software engineering, development, frontend, backend, fullstack';
 
 const { meta = {} } = Astro.props;
 
-const title = meta.title
-  ? `${meta.title} | Parker's Digital Domain`
-  : "Parker's Digital Domain";
-const description =
-  meta.description ?? "A portfolio of Parker's projects and writings.";
+const title = meta.title ? `${meta.title} | Parker's Digital Domain` : "Parker's Digital Domain";
+const description = meta.description ?? "A portfolio of Parker's projects and writings.";
 const canonicalUrl = meta.url ?? Astro.url.href;
-const ogImageUrl =
-  meta.ogImageUrl ?? new URL("/default-og-image.png", Astro.site).href;
-const ogImageWidth = meta.ogImageWidth ?? "1200";
-const ogImageHeight = meta.ogImageHeight ?? "630";
-const keywords = meta.keywords
-  ? `${DEFAULT_KEYWORDS}, ${meta.keywords}`
-  : DEFAULT_KEYWORDS;
-const ogType = meta.type ?? "website";
+const ogImageUrl = meta.ogImageUrl ?? new URL('/default-og-image.png', Astro.site).href;
+const ogImageWidth = meta.ogImageWidth ?? '1200';
+const ogImageHeight = meta.ogImageHeight ?? '630';
+const keywords = meta.keywords ? `${DEFAULT_KEYWORDS}, ${meta.keywords}` : DEFAULT_KEYWORDS;
+const ogType = meta.type ?? 'website';
 ---
 
 <meta charset="utf-8" />

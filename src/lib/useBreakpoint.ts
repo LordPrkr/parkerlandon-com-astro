@@ -1,19 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 
 const breakpoints = {
-  xs: "475px",
-  sm: "640px",
-  md: "768px",
-  lg: "1024px",
-  xl: "1280px",
-  "2xl": "1536px",
+  xs: '475px',
+  sm: '640px',
+  md: '768px',
+  lg: '1024px',
+  xl: '1280px',
+  '2xl': '1536px',
 } as const;
 
 type BreakpointKey = keyof typeof breakpoints;
 
 export function useBreakpoint<K extends BreakpointKey>(breakpointKey: K) {
   const getMatches = (query: string): boolean => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== 'undefined') {
       return window.matchMedia(query).matches;
     }
     return false;
@@ -35,14 +35,14 @@ export function useBreakpoint<K extends BreakpointKey>(breakpointKey: K) {
     if (matchMedia.addListener) {
       matchMedia.addListener(handleChange);
     } else {
-      matchMedia.addEventListener("change", handleChange);
+      matchMedia.addEventListener('change', handleChange);
     }
 
     return () => {
       if (matchMedia.removeListener) {
         matchMedia.removeListener(handleChange);
       } else {
-        matchMedia.removeEventListener("change", handleChange);
+        matchMedia.removeEventListener('change', handleChange);
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

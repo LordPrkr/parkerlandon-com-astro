@@ -1,5 +1,5 @@
-import type { PortfolioItem } from "@/lib/portfolio";
-import { Button } from "../ui/button";
+import type { PortfolioItem } from '@/lib/portfolio';
+import { Button } from '../ui/button';
 import {
   Dialog,
   DialogHeader,
@@ -9,19 +9,17 @@ import {
   DialogFooter,
   DialogClose,
   DialogDescription,
-} from "../ui/dialog";
-import { TypographyUL } from "../typography";
-import AnchorText from "../typography/anchor-text";
-import LoomEmbed from "./loom-embed";
-import YoutubeEmbed from "./youtube-embed";
+} from '../ui/dialog';
+import { TypographyUL } from '../typography';
+import AnchorText from '../typography/anchor-text';
+import LoomEmbed from './loom-embed';
+import YoutubeEmbed from './youtube-embed';
 
 interface PortfolioCardDetailsButtonProps {
   item: PortfolioItem;
 }
 
-export default function PortfolioCardDetailsDialog({
-  item,
-}: PortfolioCardDetailsButtonProps) {
+export default function PortfolioCardDetailsDialog({ item }: PortfolioCardDetailsButtonProps) {
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -31,12 +29,8 @@ export default function PortfolioCardDetailsDialog({
         <DialogHeader className="gap-2">
           <DialogTitle>{item.title}</DialogTitle>
           {item.loomUrl && <LoomEmbed url={item.loomUrl} />}
-          {item.youtubeEmbedUrl && (
-            <YoutubeEmbed embedUrl={item.youtubeEmbedUrl} />
-          )}
-          <DialogDescription className="font-body">
-            {item.longDescription}
-          </DialogDescription>
+          {item.youtubeEmbedUrl && <YoutubeEmbed embedUrl={item.youtubeEmbedUrl} />}
+          <DialogDescription className="font-body">{item.longDescription}</DialogDescription>
           <TypographyUL>
             {item.links.map((link) => (
               <li key={link.url}>

@@ -1,5 +1,5 @@
-import type { PostMetadata } from "@/lib/types/PostMetadata";
-import PostCard from "./post-card";
+import type { PostMetadata } from '@/lib/types/PostMetadata';
+import PostCard from './post-card';
 
 interface PostListProps {
   posts: PostMetadata[];

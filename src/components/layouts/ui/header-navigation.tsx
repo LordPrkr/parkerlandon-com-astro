@@ -4,7 +4,7 @@ import {
   NavigationMenuLink,
   NavigationMenuList,
   navigationMenuTriggerStyle,
-} from "../../ui/navigation-menu";
+} from '../../ui/navigation-menu';
 
 interface HeaderNavigationProps {
   menuItems: NavigationItem[];
@@ -16,20 +16,13 @@ export interface NavigationItem {
   href: string;
 }
 
-export default function HeaderNavigation({
-  menuItems,
-  currentPath,
-}: HeaderNavigationProps) {
+export default function HeaderNavigation({ menuItems, currentPath }: HeaderNavigationProps) {
   return (
     <NavigationMenu>
       <NavigationMenuList>
         {menuItems.map((item) => (
           <NavigationMenuItem key={item.title}>
-            <NavigationMenuLink
-              href={item.href}
-              className={navigationMenuTriggerStyle()}
-              active={currentPath === item.href}
-            >
+            <NavigationMenuLink href={item.href} className={navigationMenuTriggerStyle()} active={currentPath === item.href}>
               {item.title}
             </NavigationMenuLink>
           </NavigationMenuItem>

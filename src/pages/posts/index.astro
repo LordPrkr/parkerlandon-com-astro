@@ -1,12 +1,12 @@
 ---
-import BaseLayout from "@/layouts/BaseLayout.astro";
-import PostList from "@/components/posts/post-list";
-import { TitleText } from "@/components/typography/title-text";
-import { getCollection } from "astro:content";
-import { toPostTopic } from "@/lib/types/PostTopic";
-import type { PostMetadata } from "@/lib/types/PostMetadata";
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import PostList from '@/components/posts/post-list';
+import { TitleText } from '@/components/typography/title-text';
+import { getCollection } from 'astro:content';
+import { toPostTopic } from '@/lib/types/PostTopic';
+import type { PostMetadata } from '@/lib/types/PostMetadata';
 
-const allPosts = await getCollection("posts");
+const allPosts = await getCollection('posts');
 
 const posts: PostMetadata[] = allPosts
   .map((post) => ({
@@ -16,14 +16,14 @@ const posts: PostMetadata[] = allPosts
     postnum: String(post.data.postnum),
     slug: post.id,
     url: `https://parkerlandon.com/posts/${post.id}`,
-    topics: post.data.keywords?.split(", ").map(toPostTopic) ?? [],
+    topics: post.data.keywords?.split(', ').map(toPostTopic) ?? [],
   }))
   .sort((a, b) => +b.postnum - +a.postnum);
 
 const meta = {
   title: "Parker's Posts",
   description: "Parker's blog posts about software engineering.",
-  url: "https://parkerlandon.com/posts",
+  url: 'https://parkerlandon.com/posts',
 };
 ---
 
