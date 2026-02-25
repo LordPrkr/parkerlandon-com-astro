@@ -16,6 +16,9 @@ export default function LoomEmbed({ url }: LoomEmbedProps) {
     })().then();
   }, [url]);
 
-  if (!embed) return <Skeleton className="w-full aspect-462/347" />;
+  if (!embed) {
+    return <Skeleton className="w-full aspect-462/347" />;
+  }
+  // biome-ignore lint/security/noDangerouslySetInnerHtml: trusted HTML from Loom oembed API
   return <div dangerouslySetInnerHTML={{ __html: embed }} />;
 }

@@ -28,6 +28,7 @@ export default function PostCard({ post }: PostCardProps) {
         ))}
       </CardContent>
       <CardFooter className="p-5 pt-0">
+        {/* biome-ignore lint/a11y/useAnchorContent: content provided by Button children */}
         <Button variant="link" size="link" render={<a href={href} />}>
           Read More
         </Button>

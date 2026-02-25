@@ -1,3 +1,4 @@
+import type { ComponentType } from 'react';
 import { Github, Linkedin, Twitter } from 'lucide-react';
 import { FaYoutube } from 'react-icons/fa';
 
@@ -25,7 +26,7 @@ export default function PageFooter() {
 }
 
 type IconLinkProps = {
-  Icon: any;
+  Icon: ComponentType<{ className?: string }>;
   href: string;
 };
 
