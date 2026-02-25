@@ -1,10 +1,10 @@
 ---
-import BaseLayout from '@/layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
 import PostList from '@/components/posts/post-list';
 import { TitleText } from '@/components/typography/title-text';
-import { getCollection } from 'astro:content';
-import { toPostTopic } from '@/lib/types/PostTopic';
+import BaseLayout from '@/layouts/BaseLayout.astro';
 import type { PostMetadata } from '@/lib/types/PostMetadata';
+import { toPostTopic } from '@/lib/types/PostTopic';
 
 const allPosts = await getCollection('posts');
 

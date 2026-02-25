@@ -1,7 +1,7 @@
-import LogoHeading from './logo-heading';
 import { useBreakpoint } from '@/lib/useBreakpoint';
-import HeaderNavigation, { type NavigationItem } from './header-navigation';
 import HamburgerSheet from './hamburger-sheet';
+import HeaderNavigation, { type NavigationItem } from './header-navigation';
+import LogoHeading from './logo-heading';
 
 const NAVIGATION_MENU_ITEMS: NavigationItem[] = [
   { title: 'Portfolio', href: '/portfolio' },

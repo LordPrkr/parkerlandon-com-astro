@@ -1,7 +1,7 @@
 import type { PortfolioItem } from '@/lib/portfolio';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
-import PortfolioCardTag from './portfolio-card-tag';
 import PortfolioCardDetailsDialog from './portfolio-card-details-dialog';
+import PortfolioCardTag from './portfolio-card-tag';
 
 interface PortfolioCardProps {
   item: PortfolioItem;

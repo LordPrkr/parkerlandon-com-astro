@@ -1,17 +1,17 @@
 ---
-import MdxLayout from '@/layouts/MdxLayout.astro';
 import { getCollection, render } from 'astro:content';
-import BodyText from '@/components/typography/body-text';
 import MdxAnchor from '@/components/mdx-anchor';
 import {
+  TypographyBlockquote,
   TypographyH1,
   TypographyH2,
   TypographyH3,
   TypographyH4,
-  TypographyUL,
   TypographyOL,
-  TypographyBlockquote,
+  TypographyUL,
 } from '@/components/typography';
+import BodyText from '@/components/typography/body-text';
+import MdxLayout from '@/layouts/MdxLayout.astro';
 
 export async function getStaticPaths() {
   const posts = await getCollection('posts');

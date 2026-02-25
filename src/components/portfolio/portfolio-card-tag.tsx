@@ -1,8 +1,11 @@
-import type { PortfolioItemTag } from '@/lib/portfolio';
-import { Badge } from '../ui/badge';
 import type { ReactNode } from 'react';
-import { BadgeChildren } from '../badge-children';
+import { AiFillApi } from 'react-icons/ai';
+import { CgWebsite } from 'react-icons/cg';
+import { FaDragon, FaJava, FaTerminal } from 'react-icons/fa';
+import { GiBearHead } from 'react-icons/gi';
+import { GrCycle } from 'react-icons/gr';
 import { HiMiniSquare3Stack3D } from 'react-icons/hi2';
+import { MdLibraryBooks } from 'react-icons/md';
 import {
   SiCplusplus,
   SiDocker,
@@ -22,16 +25,12 @@ import {
   SiTypescript,
   SiXstate,
 } from 'react-icons/si';
-import { MdLibraryBooks } from 'react-icons/md';
-import { FaDragon, FaJava, FaTerminal } from 'react-icons/fa';
-import { AiFillApi } from 'react-icons/ai';
-import { GrCycle } from 'react-icons/gr';
-import { GiBearHead } from 'react-icons/gi';
-import { CgWebsite } from 'react-icons/cg';
-
+import type { PortfolioItemTag } from '@/lib/portfolio';
 // Import the enum values as a type-only import won't work for switch cases,
 // so we import the module and use it directly
 import { PortfolioItemTag as Tag } from '@/lib/portfolio';
+import { BadgeChildren } from '../badge-children';
+import { Badge } from '../ui/badge';
 
 interface PortfolioCardTagProps {
   tag: PortfolioItemTag;

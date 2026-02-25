@@ -1,5 +1,5 @@
-import { cn } from '@/lib/utils';
 import type { ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 
 interface TypographyProps {
   children?: ReactNode;
@@ -23,7 +23,7 @@ export function TypographyH4({ children, className }: TypographyProps) {
 }
 
 export function TypographyP({ children }: TypographyProps) {
-  return <p className="leading-7 [&:not(:first-child)]:mt-4 font-body">{children}</p>;
+  return <p className="leading-7 not-first:mt-4 font-body">{children}</p>;
 }
 
 export function TypographyBlockquote({ children }: TypographyProps) {

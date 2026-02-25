@@ -16,6 +16,6 @@ export default function LoomEmbed({ url }: LoomEmbedProps) {
     })().then();
   }, [url]);
 
-  if (!embed) return <Skeleton className="w-full aspect-[462/347]" />;
+  if (!embed) return <Skeleton className="w-full aspect-462/347" />;
   return <div dangerouslySetInnerHTML={{ __html: embed }} />;
 }

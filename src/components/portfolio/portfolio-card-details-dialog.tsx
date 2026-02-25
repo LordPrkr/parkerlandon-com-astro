@@ -1,17 +1,17 @@
 import type { PortfolioItem } from '@/lib/portfolio';
+import { TypographyUL } from '../typography';
+import AnchorText from '../typography/anchor-text';
 import { Button } from '../ui/button';
 import {
   Dialog,
-  DialogHeader,
-  DialogTrigger,
-  DialogContent,
-  DialogTitle,
-  DialogFooter,
   DialogClose,
+  DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
 } from '../ui/dialog';
-import { TypographyUL } from '../typography';
-import AnchorText from '../typography/anchor-text';
 import LoomEmbed from './loom-embed';
 import YoutubeEmbed from './youtube-embed';
 

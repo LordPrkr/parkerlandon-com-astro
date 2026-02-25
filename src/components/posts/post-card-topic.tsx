@@ -1,11 +1,11 @@
-import { PostTopic } from '@/lib/types/PostTopic';
-import { Badge } from '../ui/badge';
+import { FaDragon, FaTree } from 'react-icons/fa';
+import { HiBeaker, HiMiniSquare3Stack3D } from 'react-icons/hi2';
+import { MdPattern, MdSettingsSystemDaydream } from 'react-icons/md';
 import { SiGo, SiHaskell, SiTerraform } from 'react-icons/si';
 import { TbLambda } from 'react-icons/tb';
-import { HiBeaker, HiMiniSquare3Stack3D } from 'react-icons/hi2';
-import { FaDragon, FaTree } from 'react-icons/fa';
-import { MdSettingsSystemDaydream, MdPattern } from 'react-icons/md';
+import { PostTopic } from '@/lib/types/PostTopic';
 import { BadgeChildren } from '../badge-children';
+import { Badge } from '../ui/badge';
 
 interface PostCardTagProps {
   topic: PostTopic;

@@ -1,9 +1,9 @@
+import { HamburgerMenuIcon } from '@radix-ui/react-icons';
+import { TypographyH3 } from '@/components/typography';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { HamburgerMenuIcon } from '@radix-ui/react-icons';
-import type { NavigationItem } from './header-navigation';
-import { TypographyH3 } from '@/components/typography';
 import { cn } from '@/lib/utils';
+import type { NavigationItem } from './header-navigation';
 
 interface HamburgerSheetProps {
   menuItems: NavigationItem[];
