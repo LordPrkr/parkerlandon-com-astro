@@ -1,4 +1,4 @@
-import { HamburgerMenuIcon } from '@radix-ui/react-icons';
+import { Menu } from 'lucide-react';
 import { TypographyH3 } from '@/components/typography';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -12,27 +12,24 @@ interface HamburgerSheetProps {
 
 export default function HamburgerSheet({ menuItems, currentPath }: HamburgerSheetProps) {
   return (
-    <Sheet>
-      <SheetTrigger asChild>
-        <Button variant="ghost" size="icon">
-          <HamburgerMenuIcon strokeWidth={12} />
-        </Button>
+    <Sheet side="right">
+      <SheetTrigger render={<Button variant="ghost" size="icon" />}>
+        <Menu />
       </SheetTrigger>
-      <SheetContent className="flex flex-col items-start gap-6" side="right">
+      <SheetContent className="flex flex-col items-start gap-6">
         <a href="/">
           <img src="/logo.svg" alt="Lordly Logo" className="w-auto h-[8vh] aspect-square" />
         </a>
         {menuItems.map((item) => (
-          <Button variant="link" asChild key={item.href}>
-            <a href={item.href}>
-              <TypographyH3
-                className={cn({
-                  'underline decoration-2': item.href === currentPath,
-                })}
-              >
-                {item.title}
-              </TypographyH3>
-            </a>
+          // biome-ignore lint/a11y/useAnchorContent: children passed via render prop
+          <Button variant="link" render={<a href={item.href} />} key={item.href}>
+            <TypographyH3
+              className={cn({
+                'underline decoration-2': item.href === currentPath,
+              })}
+            >
+              {item.title}
+            </TypographyH3>
           </Button>
         ))}
       </SheetContent>

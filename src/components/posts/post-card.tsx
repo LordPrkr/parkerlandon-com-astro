@@ -28,8 +28,8 @@ export default function PostCard({ post }: PostCardProps) {
         ))}
       </CardContent>
       <CardFooter className="p-5 pt-0">
-        <Button variant="link" size="link" asChild>
-          <a href={href}>Read More</a>
+        <Button variant="link" size="link" render={<a href={href} />}>
+          Read More
         </Button>
       </CardFooter>
     </Card>

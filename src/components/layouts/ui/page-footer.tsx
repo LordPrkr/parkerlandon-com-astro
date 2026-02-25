@@ -1,11 +1,11 @@
-import { GitHubLogoIcon, LinkedInLogoIcon, TwitterLogoIcon } from '@radix-ui/react-icons';
+import { Github, Linkedin, Twitter } from 'lucide-react';
 import { FaYoutube } from 'react-icons/fa';
 
 const ICON_LINKS = [
-  { Icon: GitHubLogoIcon, href: 'https://github.com/LordPrkr' },
-  { Icon: TwitterLogoIcon, href: 'https://twitter.com/LordPrkr' },
+  { Icon: Github, href: 'https://github.com/LordPrkr' },
+  { Icon: Twitter, href: 'https://twitter.com/LordPrkr' },
   {
-    Icon: LinkedInLogoIcon,
+    Icon: Linkedin,
     href: 'https://www.linkedin.com/in/parkerlandon',
   },
   { Icon: FaYoutube, href: 'https://www.youtube.com/@prkrlndn' },

@@ -22,9 +22,7 @@ interface PortfolioCardDetailsButtonProps {
 export default function PortfolioCardDetailsDialog({ item }: PortfolioCardDetailsButtonProps) {
   return (
     <Dialog>
-      <DialogTrigger asChild>
-        <Button size="sm">View Details</Button>
-      </DialogTrigger>
+      <DialogTrigger render={<Button size="sm" />}>View Details</DialogTrigger>
       <DialogContent className="overflow-y-scroll">
         <DialogHeader className="gap-2">
           <DialogTitle>{item.title}</DialogTitle>
@@ -42,11 +40,7 @@ export default function PortfolioCardDetailsDialog({ item }: PortfolioCardDetail
           </TypographyUL>
         </DialogHeader>
         <DialogFooter>
-          <DialogClose>
-            <Button variant="secondary" size="sm">
-              Close
-            </Button>
-          </DialogClose>
+          <DialogClose render={<Button variant="secondary" size="sm" />}>Close</DialogClose>
         </DialogFooter>
       </DialogContent>
     </Dialog>
