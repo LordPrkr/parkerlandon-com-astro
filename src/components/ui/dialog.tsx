@@ -24,11 +24,7 @@ function DialogOverlay({ className, ...props }: React.ComponentPropsWithoutRef<t
   );
 }
 
-function DialogContent({
-  className,
-  children,
-  ...props
-}: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Popup>) {
+function DialogContent({ className, children, ...props }: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Popup>) {
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -65,12 +61,7 @@ const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
 DialogFooter.displayName = 'DialogFooter';
 
 function DialogTitle({ className, ...props }: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>) {
-  return (
-    <DialogPrimitive.Title
-      className={cn('text-lg font-semibold font-heading leading-none tracking-tight', className)}
-      {...props}
-    />
-  );
+  return <DialogPrimitive.Title className={cn('text-lg font-semibold font-heading leading-none tracking-tight', className)} {...props} />;
 }
 
 function DialogDescription({ className, ...props }: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>) {

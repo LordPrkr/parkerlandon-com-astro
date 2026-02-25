@@ -8,6 +8,12 @@ Astro 5 personal site + blog.
 - **Build:** `bun run build`
 - **Dev:** `bun run dev`
 
+## Must Follow
+
+- Run `bun format` and `bun lint` when finished with a task.
+- Fix all lint errors before commit.
+- Always use `bun run <script>` — never npx, npm, or bunx. Add missing scripts to package.json if needed.
+
 ## Key Conventions
 
 - Path alias: `@/` → `src/`
