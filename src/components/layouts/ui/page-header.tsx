@@ -1,4 +1,3 @@
-import { useBreakpoint } from '@/lib/useBreakpoint';
 import HamburgerSheet from './hamburger-sheet';
 import HeaderNavigation, { type NavigationItem } from './header-navigation';
 import LogoHeading from './logo-heading';
@@ -14,14 +13,12 @@ export default function PageHeader() {
   return (
     <header className="flex flex-row items-center justify-between w-full">
       <LogoHeading />
-      <Navigation currentPath={currentPath} />
+      <div className="hidden sm:block">
+        <HeaderNavigation menuItems={NAVIGATION_MENU_ITEMS} currentPath={currentPath} />
+      </div>
+      <div className="sm:hidden">
+        <HamburgerSheet menuItems={NAVIGATION_MENU_ITEMS} currentPath={currentPath} />
+      </div>
     </header>
   );
-}
-
-function Navigation({ currentPath }: { currentPath: string }) {
-  const isSm = useBreakpoint('sm');
-  if (isSm === null) return null;
-  if (!isSm) return <HamburgerSheet menuItems={NAVIGATION_MENU_ITEMS} currentPath={currentPath} />;
-  return <HeaderNavigation menuItems={NAVIGATION_MENU_ITEMS} currentPath={currentPath} />;
 }
