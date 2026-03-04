@@ -5,7 +5,7 @@
 @font-face {
   font-family: "Noto Serif Variable";
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
   font-weight: 100 900;
   src: url("@fontsource-variable/noto-serif/files/noto-serif-latin-wght-normal.woff2") format("woff2-variations");
   unicode-range:
@@ -17,7 +17,7 @@
 @font-face {
   font-family: "Noto Sans Variable";
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
   font-weight: 100 900;
   src: url("@fontsource-variable/noto-sans/files/noto-sans-latin-wght-normal.woff2") format("woff2-variations");
   unicode-range:
@@ -29,7 +29,7 @@
 @font-face {
   font-family: "Fira Mono";
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
   font-weight: 400;
   src: url("@fontsource/fira-mono/files/fira-mono-latin-400-normal.woff2") format("woff2");
   unicode-range:
@@ -41,7 +41,7 @@
 @font-face {
   font-family: "Fira Mono";
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
   font-weight: 500;
   src: url("@fontsource/fira-mono/files/fira-mono-latin-500-normal.woff2") format("woff2");
   unicode-range:
