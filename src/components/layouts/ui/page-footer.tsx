@@ -15,7 +15,7 @@ const ICON_LINKS = [
 export default function PageFooter() {
   return (
     <footer className="flex flex-row items-center justify-between w-full h-[vh-8] pt-16">
-      <h4 className="font-body text-muted-foreground">Parker Landon &copy; {new Date().getFullYear()}</h4>
+      <p className="font-body text-muted-foreground">Parker Landon &copy; {new Date().getFullYear()}</p>
       <div className="flex flex-row items-center justify-center gap-1.5">
         {ICON_LINKS.map(({ Icon, href }) => (
           <IconLink Icon={Icon} href={href} key={href} />

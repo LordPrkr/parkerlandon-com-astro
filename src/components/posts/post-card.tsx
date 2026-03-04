@@ -28,8 +28,8 @@ export default function PostCard({ post }: PostCardProps) {
         ))}
       </CardContent>
       <CardFooter className="p-5 pt-0">
-        {/* biome-ignore lint/a11y/useAnchorContent: content provided by Button children */}
-        <Button variant="link" size="link" render={<a href={href} />}>
+        {/* biome-ignore lint/a11y/useAnchorContent: aria-label provided on render prop */}
+        <Button variant="link" size="link" render={<a href={href} aria-label={`Read more about ${post.title}`} />}>
           Read More
         </Button>
       </CardFooter>

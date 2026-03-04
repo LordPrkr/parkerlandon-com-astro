@@ -13,7 +13,7 @@ interface HamburgerSheetProps {
 export default function HamburgerSheet({ menuItems, currentPath }: HamburgerSheetProps) {
   return (
     <Sheet side="right">
-      <SheetTrigger render={<Button variant="ghost" size="icon" />}>
+      <SheetTrigger render={<Button variant="ghost" size="icon" aria-label="Open menu" />}>
         <Menu />
       </SheetTrigger>
       <SheetContent className="flex flex-col items-start gap-6">

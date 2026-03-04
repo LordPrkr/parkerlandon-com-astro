@@ -32,7 +32,7 @@ export default function PortfolioCardDetailsDialog({ item }: PortfolioCardDetail
           <TypographyUL>
             {item.links.map((link) => (
               <li key={link.url}>
-                <a href={link.url} target="_blank">
+                <a href={link.url} target="_blank" rel="noopener noreferrer">
                   <AnchorText>{link.text}</AnchorText>
                 </a>
               </li>
