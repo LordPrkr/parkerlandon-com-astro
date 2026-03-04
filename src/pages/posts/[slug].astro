@@ -11,6 +11,7 @@ import {
   TypographyUL,
 } from '@/components/typography';
 import BodyText from '@/components/typography/body-text';
+import KatexStyles from '@/components/KatexStyles.astro';
 import MdxLayout from '@/layouts/MdxLayout.astro';
 
 export async function getStaticPaths() {
@@ -37,6 +38,7 @@ const meta = {
 ---
 
 <MdxLayout meta={meta}>
+  {post.data.math && <KatexStyles />}
   <Content
     components={{
       h1: TypographyH1,

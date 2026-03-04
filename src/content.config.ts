@@ -12,6 +12,7 @@ const posts = defineCollection({
     ogImageWidth: z.string().optional(),
     ogImageHeight: z.string().optional(),
     postnum: z.coerce.string(),
+    math: z.boolean().default(false),
   }),
 });
 
