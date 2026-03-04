@@ -1,7 +1,7 @@
 ---
 import '@/styles/globals.css';
 import Head from '@/components/Head.astro';
-import PageFooter from '@/components/layouts/ui/page-footer';
+import PageFooter from '@/components/layouts/ui/PageFooter.astro';
 import PageHeader from '@/components/layouts/ui/page-header';
 import type { PageMetadata } from '@/lib/types/PageMetadata';
 
@@ -23,10 +23,10 @@ const { meta } = Astro.props;
       style="--font-logo: 'Noto Serif Variable', serif; --font-heading: 'Noto Serif Variable', serif; --font-body: 'Noto Serif Variable', serif; --font-sans: 'Noto Sans Variable', sans-serif; --font-mono: 'Fira Mono', monospace;"
     >
       <div class="flex flex-col items-center w-full">
-        <PageHeader client:load transition:persist />
+        <PageHeader client:idle transition:persist />
         <slot />
       </div>
-      <PageFooter client:load transition:persist />
+      <PageFooter transition:persist />
     </div>
   </body>
 </html>

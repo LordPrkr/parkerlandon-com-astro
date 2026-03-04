@@ -1,6 +1,7 @@
 ---
 import { ClientRouter } from 'astro:transitions';
 import type { PageMetadata } from '@/lib/types/PageMetadata';
+import notoSerifUrl from '@fontsource-variable/noto-serif/files/noto-serif-latin-wght-normal.woff2';
 
 interface Props {
   meta?: PageMetadata;
@@ -52,4 +53,5 @@ const ogType = meta.type ?? 'website';
 <meta name="twitter:description" content={description} />
 <meta name="twitter:image" content={ogImageUrl} />
 
+<link rel="preload" as="font" type="font/woff2" href={notoSerifUrl} crossorigin />
 <ClientRouter />
