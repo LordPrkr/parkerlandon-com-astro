@@ -17,8 +17,14 @@ export enum PortfolioItemTag {
   ZUSTAND = 'zustand',
   // Backend
   NODEJS = 'node.js',
+  BUN = 'bun',
   EXPRESSJS = 'express.js',
+  HONO = 'hono',
+  EFFECTTS = 'effect-ts',
   JAVA_SPRING = 'java spring',
+  OPENTELEMETRY = 'opentelemetry',
+  // Infra
+  RENDER = 'render',
   // Database
   MYSQL = 'mysql',
   POSTGRESQL = 'postgresql',
@@ -49,6 +55,35 @@ export type PortfolioItem = {
 };
 
 export const projects: PortfolioItem[] = [
+  {
+    title: 'Habit Hatchery',
+    shortDescription:
+      'Habit Hatchery is a gamified habit tracking application where you raise cute creatures by making progress toward your habits.',
+    longDescription:
+      'Habit Hatchery is a gamified habit-tracking platform where users create habits — boolean checks, numeric counts, or min/max ranges — each bonded to a Pokemon-like creature companion that roams an animated ranch, earns XP on habit completion, evolves through forms as it levels up, and rewards streaks and perfect days with in-game currency spendable in a shop on food, accessories, and decor. The project is a Bun monorepo orchestrated by Turborepo, spanning a Hono REST API, a React SPA, a cross-platform CLI compiled to standalone binaries, and shared packages for domain schemas and a type-safe HTTP client. The backend is built on Effect-TS for layered dependency injection, tagged error handling with exhaustive pattern matching, and a general functional style. Auth is self-hosted via better-auth with Google OAuth and device authorization. Kysely handles type-safe SQL against PostgreSQL, and every service method feeds named spans into OpenTelemetry traces exported to Axiom. The frontend has a custom pixel-art design system on Base UI headless primitives with an OKLCH token palette and spring-physics animations. Creatures are driven by an XState state machine with physics-based wandering. TanStack Router provides file-based routing, TanStack Query manages server state with optimistic mutations, and Zustand holds UI state. Testing uses Testcontainers for integration tests against real PostgreSQL, Effect-based unit tests with mock layers, and Testing Library for component tests. The API deploys via Docker multi-stage builds on Render. ',
+    emoji: '\u{1F989}',
+    links: [
+      {
+        text: 'HabitHatchery.com',
+        url: 'https://habithatchery.com',
+      },
+    ],
+    tags: [
+      PortfolioItemTag.FULLSTACK,
+      PortfolioItemTag.REACT,
+      PortfolioItemTag.TYPESCRIPT,
+      PortfolioItemTag.POSTGRESQL,
+      PortfolioItemTag.REST_API,
+      PortfolioItemTag.CLI,
+      PortfolioItemTag.DOCKER,
+      PortfolioItemTag.RENDER,
+      PortfolioItemTag.HONO,
+      PortfolioItemTag.OPENTELEMETRY,
+      PortfolioItemTag.EFFECTTS,
+      PortfolioItemTag.BUN,
+    ],
+    youtubeEmbedUrl: 'https://www.youtube.com/embed/YWLHn50Esbg?si=GWKkCydEZ_hyIJDW',
+  },
   {
     title: 'Knowted v2',
     shortDescription:

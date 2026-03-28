@@ -6,19 +6,24 @@ import { GiBearHead } from 'react-icons/gi';
 import { GrCycle } from 'react-icons/gr';
 import { HiMiniSquare3Stack3D } from 'react-icons/hi2';
 import { MdLibraryBooks } from 'react-icons/md';
+import { RiFunctions } from 'react-icons/ri';
 import {
+  SiBun,
   SiCplusplus,
   SiDocker,
   SiExpress,
   SiFirebase,
   SiGo,
   SiHaskell,
+  SiHono,
   SiMysql,
   SiNextdotjs,
   SiNodedotjs,
+  SiOpentelemetry,
   SiPostgresql,
   SiReact,
   SiRedux,
+  SiRender,
   SiRust,
   SiSqlite,
   SiTerraform,
@@ -158,6 +163,26 @@ function getTagProps(tag: PortfolioItemTag): {
     case Tag.TERRAFORM:
       return {
         children: <BadgeChildren text="Terraform" iconAfter={<SiTerraform size={16} className="text-purple-400" />} />,
+      };
+    case Tag.HONO:
+      return {
+        children: <BadgeChildren text="Hono" iconAfter={<SiHono size={16} className="text-orange-400" />} />,
+      };
+    case Tag.EFFECTTS:
+      return {
+        children: <BadgeChildren text="Effect-TS" iconAfter={<RiFunctions size={16} className="text-black-400" />} />,
+      };
+    case Tag.OPENTELEMETRY:
+      return {
+        children: <BadgeChildren text="Render" iconAfter={<SiOpentelemetry size={16} className="text-purple-400" />} />,
+      };
+    case Tag.RENDER:
+      return {
+        children: <BadgeChildren text="Render" iconAfter={<SiRender size={16} className="text-gray-400" />} />,
+      };
+    case Tag.BUN:
+      return {
+        children: <BadgeChildren text="Bun" iconAfter={<SiBun size={16} className="text-[#eab676]" />} />,
       };
   }
 }
