@@ -32,7 +32,8 @@ function DialogContent({ className, children, ...props }: React.ComponentPropsWi
         <DialogPrimitive.Popup
           className={cn(
             'w-full max-w-lg gap-4 border bg-background p-6 shadow-lg sm:rounded-lg',
-            'grid transition-all duration-200',
+            'grid max-h-screen overflow-y-auto transition-all duration-200',
+            'max-sm:h-screen max-sm:max-w-full max-sm:rounded-none',
             'data-[starting-style]:opacity-0 data-[starting-style]:scale-95',
             'data-[ending-style]:opacity-0 data-[ending-style]:scale-95',
             className,

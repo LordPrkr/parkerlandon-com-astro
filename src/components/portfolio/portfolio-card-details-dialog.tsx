@@ -23,7 +23,7 @@ export default function PortfolioCardDetailsDialog({ item }: PortfolioCardDetail
   return (
     <Dialog>
       <DialogTrigger render={<Button size="sm" />}>View Details</DialogTrigger>
-      <DialogContent className="overflow-y-scroll">
+      <DialogContent>
         <DialogHeader className="gap-2">
           <DialogTitle>{item.title}</DialogTitle>
           {item.loomUrl && <LoomEmbed url={item.loomUrl} />}
